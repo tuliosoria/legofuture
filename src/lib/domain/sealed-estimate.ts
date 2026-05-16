@@ -1,26 +1,61 @@
-import type { SealedProduct, ProductPricing } from "@/lib/types/sealed";
-import pricingData from "@/lib/data/sealed-ml/pricecharting-current-prices.json";
+import "server-only";
 
-type PricingMap = Record<string, ProductPricing>;
+import { GetCommand } from "@aws-sdk/lib-dynamodb";
+import type { SealedProduct, ProductPricing } from "@/lib/types/sealed";
+import { getDynamo, getTableName } from "@/lib/db/dynamo";
+import { cacheGet, cachePut } from "@/lib/db/cache";
 
 /**
  * Pricing snapshot. Source of truth: DynamoDB table `legofuture-cache`
- * (pk="PRICING"), populated by `scripts/sync-pricecharting-to-dynamo.mjs`.
- * The JSON file imported above is regenerated from DynamoDB at prebuild
- * by `scripts/hydrate-from-dynamo.mjs`. No mock fallback.
+ * (pk="PRICING", sk="PRODUCT#<id>"), populated by
+ * `scripts/sync-pricecharting-to-dynamo.mjs`. Reads are live per request,
+ * with a 5-minute DDB-backed cache (cache.ts) to absorb repeated hits.
  */
-const hydratedPricing = pricingData as unknown as PricingMap;
 
-const memCache = new Map<string, { data: ProductPricing; expiresAt: number }>();
+const PRICING_CACHE_TYPE = "lego-pricing";
+const PRICING_TTL_SEC = 300;
 const MEM_TTL_MS = 5 * 60 * 1000;
 
-/**
- * Returns the latest pricing snapshot for a product from the hydrated
- * (DynamoDB-sourced) dataset. Returns null only if PriceCharting had no
- * data at the last sync.
- */
-export function getPricingFromBundle(id: string): ProductPricing | null {
-  return hydratedPricing[id] ?? null;
+const liveMemCache = new Map<string, { data: ProductPricing; expiresAt: number }>();
+
+export async function getPricingFromDdb(
+  id: string
+): Promise<ProductPricing | null> {
+  const cached = await cacheGet<ProductPricing>(PRICING_CACHE_TYPE, id);
+  if (cached) return cached;
+
+  const client = getDynamo();
+  const table = getTableName();
+  if (!client || !table) return null;
+
+  try {
+    const res = await client.send(
+      new GetCommand({
+        TableName: table,
+        Key: { pk: "PRICING", sk: `PRODUCT#${id}` },
+      })
+    );
+    if (!res.Item) return null;
+
+    const {
+      pk: _pk,
+      sk: _sk,
+      productId: _productId,
+      _source,
+      ...fields
+    } = res.Item as Record<string, unknown>;
+    void _pk;
+    void _sk;
+    void _productId;
+    void _source;
+
+    const pricing = fields as unknown as ProductPricing;
+    await cachePut(PRICING_CACHE_TYPE, id, pricing, PRICING_TTL_SEC);
+    return pricing;
+  } catch (err) {
+    console.warn("getPricingFromDdb error:", err);
+    return null;
+  }
 }
 
 export async function fetchLivePricing(
@@ -29,7 +64,7 @@ export async function fetchLivePricing(
   const token = process.env.PRICECHARTING_API_TOKEN;
   if (!token) return null;
 
-  const cached = memCache.get(product.id);
+  const cached = liveMemCache.get(product.id);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
   const q = encodeURIComponent(
@@ -50,24 +85,25 @@ export async function fetchLivePricing(
       lastFetched: new Date().toISOString(),
     };
 
-    memCache.set(product.id, { data: pricing, expiresAt: Date.now() + MEM_TTL_MS });
+    liveMemCache.set(product.id, {
+      data: pricing,
+      expiresAt: Date.now() + MEM_TTL_MS,
+    });
     return pricing;
   } catch {
     return null;
   }
 }
 
+/**
+ * Preferred per-request pricing resolver. Returns DynamoDB snapshot
+ * (refreshed by the sync script) and falls back to live PriceCharting
+ * only when DDB has no record.
+ */
 export async function getPricing(
   product: SealedProduct
 ): Promise<ProductPricing | null> {
-  // L0: in-process cache
-  const mem = memCache.get(product.id);
-  if (mem && mem.expiresAt > Date.now()) return mem.data;
-
-  // L2: bundled JSON
-  const bundle = getPricingFromBundle(product.id);
-  if (bundle) return bundle;
-
-  // L3: live PriceCharting
+  const ddb = await getPricingFromDdb(product.id);
+  if (ddb) return ddb;
   return fetchLivePricing(product);
 }

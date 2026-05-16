@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getProductBySlug, loadStoredCatalog } from "@/lib/db/sealed-search";
-import { getPricingFromBundle } from "@/lib/domain/sealed-estimate";
+import { getProductBySlug } from "@/lib/db/sealed-search";
+import { getPricing } from "@/lib/domain/sealed-estimate";
 import { computeForecast } from "@/lib/domain/sealed-forecast";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 300;
 import { ModelDetails } from "@/components/sealed/ModelDetails";
 import { DetailClient } from "./DetailClient";
 import { ChipBadge } from "@/components/ui/ChipBadge";
@@ -12,14 +15,9 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams() {
-  const catalog = await loadStoredCatalog();
-  return catalog.map((p) => ({ slug: p.slug }));
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return { title: "Not Found | LegoFuture" };
   return {
     title: `${product.name} Forecast | LegoFuture`,
@@ -41,10 +39,10 @@ const signalToChipColor: Record<string, "blue" | "yellow" | "black"> = {
 
 export default async function SlugPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const pricing = getPricingFromBundle(product.id);
+  const pricing = await getPricing(product);
   const forecast = computeForecast(
     product,
     pricing ?? {

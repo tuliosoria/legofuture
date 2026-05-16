@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { loadStoredCatalog } from "@/lib/db/sealed-search";
-import { getPricingFromBundle } from "@/lib/domain/sealed-estimate";
+import { getPricing } from "@/lib/domain/sealed-estimate";
 import { computeForecast } from "@/lib/domain/sealed-forecast";
 import { ForecastDashboard } from "@/components/sealed/ForecastDashboard";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Sealed LEGO Forecast | LegoFuture",
@@ -13,20 +16,22 @@ export const metadata: Metadata = {
 export default async function SealedForecastPage() {
   const catalog = await loadStoredCatalog();
 
-  const items = catalog.map((product) => {
-    const pricing = getPricingFromBundle(product.id);
-    const forecast = computeForecast(
-      product,
-      pricing ?? {
-        newPrice: product.originalMsrp ?? 0,
-        cibPrice: null,
-        loosePrice: null,
-        salesVolume: null,
-        lastFetched: "",
-      }
-    );
-    return { product, forecast };
-  });
+  const items = await Promise.all(
+    catalog.map(async (product) => {
+      const pricing = await getPricing(product);
+      const forecast = computeForecast(
+        product,
+        pricing ?? {
+          newPrice: product.originalMsrp ?? 0,
+          cibPrice: null,
+          loosePrice: null,
+          salesVolume: null,
+          lastFetched: "",
+        }
+      );
+      return { product, forecast };
+    })
+  );
 
   return (
     <main>

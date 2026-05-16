@@ -6,16 +6,13 @@
   "scripts": {
     "dev": "next dev",
     "sync": "node scripts/sync-pricecharting-to-dynamo.mjs",
-    "hydrate": "node scripts/hydrate-from-dynamo.mjs",
-    "prebuild": "node scripts/hydrate-from-dynamo.mjs",
     "build": "next build",
-    "refresh": "npm run sync && npm run build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "hooks:install": "git config core.hooksPath .githooks",
-    "verify:app": "npm run lint && npm run build",
-    "verify:scripts": "node --check scripts/fetch-lego-prices.mjs || true",
-    "verify": "npm run verify:app && npm run verify:scripts"
+    "verify": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1032.0",
@@ -35,6 +32,7 @@
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.72.1",
     "recharts": "^3.8.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
@@ -42,6 +40,7 @@
   },
   "devDependencies": {
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.4"
+    "eslint-config-next": "^16.2.4",
+    "vitest": "^2.1.9"
   }
 }
