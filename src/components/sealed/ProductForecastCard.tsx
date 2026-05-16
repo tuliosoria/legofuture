@@ -3,6 +3,11 @@ import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { SealedProduct, Forecast } from "@/lib/types/sealed";
 import { deriveRecommendation } from "@/lib/domain/recommendation";
+import { BrickCard } from "@/components/ui/BrickCard";
+import { BrickButton } from "@/components/ui/BrickButton";
+import type { ComponentProps } from "react";
+
+type AccentColor = ComponentProps<typeof BrickCard>["accentTop"];
 
 interface ProductForecastCardProps {
   product: SealedProduct;
@@ -10,21 +15,21 @@ interface ProductForecastCardProps {
 }
 
 function trendIcon(roi: number) {
-  if (roi > 5) return <TrendingUp className="h-4 w-4" aria-hidden />;
-  if (roi < -5) return <TrendingDown className="h-4 w-4" aria-hidden />;
-  return <Minus className="h-4 w-4" aria-hidden />;
+  if (roi > 5) return <TrendingUp className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
+  if (roi < -5) return <TrendingDown className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
+  return <Minus className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
 }
 
-function trendColor(roi: number) {
-  if (roi > 5) return "text-emerald-400";
-  if (roi < -5) return "text-rose-400";
-  return "text-zinc-400";
+function roiColor(roi: number): string {
+  if (roi > 5) return "text-pure-green";
+  if (roi < -5) return "text-brick-red";
+  return "text-slate-500";
 }
 
-const recommendationStyle: Record<string, string> = {
-  buy: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  hold: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  sell: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+const signalToAccent: Record<string, AccentColor> = {
+  Buy: "blue",
+  Hold: "yellow",
+  Sell: "black",
 };
 
 export function ProductForecastCard({ product, forecast }: ProductForecastCardProps) {
@@ -35,82 +40,85 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
     retired: product.retired,
   });
 
+  const accentTop = signalToAccent[forecast.signal] ?? "black";
   const roi = forecast.roiPercent;
   const dollarGain = forecast.dollarGain;
-  const colorClass = trendColor(roi);
 
   return (
     <Link
       href={`/sealed-forecast/${product.slug}`}
       aria-label={`View forecast for ${product.name}`}
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all hover:border-[hsl(var(--lego-yellow))]/60 hover:shadow-lg"
+      className="group block"
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-white">
-        {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            className="object-contain p-4 transition-transform group-hover:scale-105"
-            sizes="(max-width: 768px) 50vw, 25vw"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-slate-400">
-            No image
-          </div>
-        )}
-        <span
-          className={`absolute right-2 top-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${recommendationStyle[recommendation] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/30"}`}
-        >
-          {recommendation.charAt(0).toUpperCase() + recommendation.slice(1)}
-        </span>
-        {product.retired && (
-          <span className="absolute left-2 top-2 rounded-full bg-zinc-700/80 px-2 py-0.5 text-[9px] font-semibold text-zinc-300">
-            Retired
-          </span>
-        )}
-      </div>
+      <BrickCard
+        as="article"
+        accentTop={accentTop}
+        studStrip
+        compact
+        className="h-full flex flex-col gap-0 transition-all duration-[120ms] group-hover:-translate-y-px group-hover:shadow-click-lg"
+      >
+        {/* Image */}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-slate-50 -mx-4 -mt-4 mb-4 border-b-2 border-jet-black">
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="object-contain p-4 transition-transform group-hover:scale-105"
+              sizes="(max-width: 768px) 50vw, 25vw"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center type-body-sm text-slate-300">
+              No image
+            </div>
+          )}
+          {product.retired && (
+            <span className="absolute left-2 top-2 bg-jet-black text-pure-white type-eyebrow px-2 py-0.5 rounded-chip">
+              Retired
+            </span>
+          )}
+        </div>
 
-      {/* Info */}
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div>
-          <h3 className="text-sm font-semibold leading-tight line-clamp-2">
+        {/* Name */}
+        <div className="flex-1 mb-3">
+          <h3 className="type-body-sm font-medium text-jet-black leading-tight line-clamp-2 mb-1">
             {product.name}
           </h3>
-          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          <p className="type-eyebrow text-slate-500">
             {product.theme} · {product.releaseYear}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {[
+            { label: "Now", value: `$${forecast.currentPrice.toLocaleString()}` },
+            { label: "5y Proj.", value: `$${forecast.projectedValue.toLocaleString()}` },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="type-eyebrow text-slate-500">{label}</p>
+              <p className="type-mono-num text-jet-black">{value}</p>
+            </div>
+          ))}
           <div>
-            <p className="text-[10px] uppercase text-[hsl(var(--muted-foreground))]">Now</p>
-            <p className="font-semibold">${forecast.currentPrice.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-[hsl(var(--muted-foreground))]">5y Projected</p>
-            <p className="font-semibold">${forecast.projectedValue.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-[hsl(var(--muted-foreground))]">ROI</p>
-            <p className={`flex items-center gap-1 font-semibold ${colorClass}`}>
+            <p className="type-eyebrow text-slate-500">ROI</p>
+            <p className={`type-mono-num flex items-center gap-0.5 ${roiColor(roi)}`}>
               {trendIcon(roi)}
               {roi >= 0 ? "+" : ""}{roi.toFixed(1)}%
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase text-[hsl(var(--muted-foreground))]">Gain</p>
-            <p className={`font-semibold ${colorClass}`}>
+            <p className="type-eyebrow text-slate-500">Gain</p>
+            <p className={`type-mono-num ${roiColor(roi)}`}>
               {dollarGain >= 0 ? "+" : ""}${dollarGain.toLocaleString()}
             </p>
           </div>
         </div>
 
-        <span className="mt-1 inline-flex items-center justify-center rounded-md border border-[hsl(var(--lego-yellow))]/40 bg-[hsl(var(--lego-yellow))]/10 px-2 py-1 text-[11px] font-semibold text-[hsl(var(--lego-yellow))] transition-colors group-hover:bg-[hsl(var(--lego-yellow))]/20">
+        <BrickButton variant="ghost" size="sm" className="w-full justify-center text-jet-black">
           View Forecast →
-        </span>
-      </div>
+        </BrickButton>
+      </BrickCard>
     </Link>
   );
 }

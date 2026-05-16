@@ -1,7 +1,29 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+
+const jakarta = Plus_Jakarta_Sans({
+  weight: "800",
+  subsets: ["latin"],
+  variable: "--nf-jakarta",
+  display: "swap",
+});
+
+const inter = Inter({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--nf-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: "500",
+  subsets: ["latin"],
+  variable: "--nf-mono",
+  display: "swap",
+});
 
 const SITE_NAME = "LegoFuture";
 const SITE_DESCRIPTION =
@@ -33,7 +55,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html
+      lang="en"
+      className={`${jakarta.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="min-h-screen antialiased flex flex-col">
         <Header />
         <main className="flex-1">{children}</main>

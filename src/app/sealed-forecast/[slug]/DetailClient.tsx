@@ -10,25 +10,37 @@ import { RoiChart } from "@/components/sealed/RoiChart";
 import { ForecastBreakdownModal } from "@/components/sealed/ForecastBreakdownModal";
 import { bricklinkUrlForSetNumber } from "@/lib/domain/sealed-bricklink";
 import { ExternalLink } from "lucide-react";
+import { BrickCard } from "@/components/ui/BrickCard";
+import { BrickButton } from "@/components/ui/BrickButton";
 
 interface DetailClientProps {
   product: SealedProduct;
   forecast: Forecast;
 }
 
+interface StatTileProps {
+  label: string;
+  value: string;
+  sub?: string;
+  positive?: boolean;
+  negative?: boolean;
+}
+
+function StatTile({ label, value, sub, positive, negative }: StatTileProps) {
+  return (
+    <BrickCard compact as="div">
+      <p className="type-eyebrow text-slate-500 mb-1">{label}</p>
+      <p className={`type-mono-num text-xl font-bold ${positive ? "text-pure-green" : negative ? "text-brick-red" : "text-jet-black"}`}>
+        {value}
+      </p>
+      {sub && <p className="type-body-sm text-slate-500 mt-0.5">{sub}</p>}
+    </BrickCard>
+  );
+}
+
 export function DetailClient({ product, forecast }: DetailClientProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const bricklinkUrl = bricklinkUrlForSetNumber(product.setNumber);
-
-  const statCard = (label: string, value: string, sub?: string) => (
-    <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-      <p className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-        {label}
-      </p>
-      <p className="mt-1 text-xl font-extrabold">{value}</p>
-      {sub && <p className="text-[11px] text-[hsl(var(--muted-foreground))]">{sub}</p>}
-    </div>
-  );
 
   return (
     <>
@@ -43,7 +55,7 @@ export function DetailClient({ product, forecast }: DetailClientProps) {
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
         {/* Left: image + meta */}
         <div className="flex flex-col gap-4">
-          <div className="relative aspect-square overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-white">
+          <div className="relative aspect-square overflow-hidden rounded-card border-2 border-jet-black bg-pure-white">
             {product.imageUrl ? (
               <Image
                 src={product.imageUrl}
@@ -54,7 +66,7 @@ export function DetailClient({ product, forecast }: DetailClientProps) {
                 priority
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center type-body-sm text-slate-300">
                 No image
               </div>
             )}
@@ -65,8 +77,8 @@ export function DetailClient({ product, forecast }: DetailClientProps) {
             <ConfidenceBadge confidence={forecast.confidence} />
           </div>
 
-          <dl className="space-y-2 text-sm">
-            {[
+          <dl className="space-y-2 type-body-sm">
+            {([
               ["Set Number", product.setNumber],
               ["Theme", product.theme],
               ...(product.subtheme ? [["Subtheme", product.subtheme]] : []),
@@ -75,73 +87,75 @@ export function DetailClient({ product, forecast }: DetailClientProps) {
               ["Pieces", product.pieceCount.toLocaleString()],
               ["Minifigures", String(product.minifigCount)],
               ["Original MSRP", `$${product.originalMsrp.toLocaleString()}`],
-            ]
-              .map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-2 border-b border-[hsl(var(--border))]/50 pb-1.5">
-                  <dt className="text-[hsl(var(--muted-foreground))]">{k}</dt>
-                  <dd className="font-medium text-right">{v}</dd>
-                </div>
-              ))}
+            ] as [string, string][]).map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-2 border-b border-slate-100 pb-1.5">
+                <dt className="text-slate-500">{k}</dt>
+                <dd className="font-medium text-jet-black text-right">{v}</dd>
+              </div>
+            ))}
           </dl>
 
           <a
             href={bricklinkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium transition-colors hover:border-[hsl(var(--lego-yellow))]/60"
           >
-            <ExternalLink className="h-4 w-4" />
-            View on BrickLink
+            <BrickButton variant="ghost" size="sm" className="w-full justify-center gap-2">
+              <ExternalLink className="h-4 w-4" strokeWidth={1.75} />
+              View on BrickLink
+            </BrickButton>
           </a>
         </div>
 
         {/* Right: forecast */}
         <div className="flex flex-col gap-6">
-          {/* Stats grid */}
+          {/* Stat tiles */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {statCard("Current Price", `$${forecast.currentPrice.toLocaleString()}`)}
-            {statCard("5y Projected", `$${forecast.projectedValue.toLocaleString()}`)}
-            {statCard(
-              "5y ROI",
-              `${forecast.roiPercent >= 0 ? "+" : ""}${forecast.roiPercent.toFixed(1)}%`,
-              `${forecast.dollarGain >= 0 ? "+" : ""}$${forecast.dollarGain.toLocaleString()} gain`
-            )}
-            {statCard("Annual Rate", `${(forecast.annualRate * 100).toFixed(1)}%`, "CAGR")}
+            <StatTile label="Current Price" value={`$${forecast.currentPrice.toLocaleString()}`} />
+            <StatTile label="5y Projected" value={`$${forecast.projectedValue.toLocaleString()}`} />
+            <StatTile
+              label="5y ROI"
+              value={`${forecast.roiPercent >= 0 ? "+" : ""}${forecast.roiPercent.toFixed(1)}%`}
+              sub={`${forecast.dollarGain >= 0 ? "+" : ""}$${forecast.dollarGain.toLocaleString()} gain`}
+              positive={forecast.roiPercent > 5}
+              negative={forecast.roiPercent < -5}
+            />
+            <StatTile
+              label="Annual Rate"
+              value={`${(forecast.annualRate * 100).toFixed(1)}%`}
+              sub="CAGR"
+              positive={forecast.annualRate > 0.07}
+            />
           </div>
 
           {/* Projection chart */}
-          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+          <BrickCard as="div">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">5-Year Projection</h2>
+              <h2 className="type-h3 text-jet-black">5-Year Projection</h2>
               <button
                 onClick={() => setShowBreakdown(true)}
-                className="text-[11px] text-[hsl(var(--lego-yellow))] underline-offset-2 hover:underline"
+                className="type-body-sm text-bright-blue hover:underline underline-offset-2"
               >
                 See breakdown
               </button>
             </div>
             <ForecastChart forecast={forecast} />
-          </div>
+          </BrickCard>
 
           {/* ROI comparison */}
-          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
-            <h2 className="mb-4 text-sm font-semibold">Scenario ROI vs S&P 500</h2>
+          <BrickCard as="div">
+            <h2 className="type-h3 text-jet-black mb-4">Scenario ROI vs S&amp;P 500</h2>
             <RoiChart forecast={forecast} />
-          </div>
+          </BrickCard>
 
           {/* Scenario table */}
-          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
-            <h2 className="mb-4 text-sm font-semibold">Scenario Outcomes</h2>
-            <table className="w-full text-sm">
+          <BrickCard as="div">
+            <h2 className="type-h3 text-jet-black mb-4">Scenario Outcomes</h2>
+            <table className="w-full type-body-sm">
               <thead>
-                <tr className="border-b border-[hsl(var(--border))]">
+                <tr className="border-b-2 border-jet-black">
                   {["Scenario", "CAGR", "5y Value", "ROI"].map((h) => (
-                    <th
-                      key={h}
-                      className="pb-2 text-left text-[10px] font-semibold uppercase text-[hsl(var(--muted-foreground))]"
-                    >
-                      {h}
-                    </th>
+                    <th key={h} className="pb-2 text-left type-eyebrow text-slate-500">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -149,30 +163,24 @@ export function DetailClient({ product, forecast }: DetailClientProps) {
                 {(["pessimist", "moderate", "optimist"] as const).map((s) => {
                   const sc = forecast.scenarios[s];
                   return (
-                    <tr key={s} className="border-b border-[hsl(var(--border))]/50">
-                      <td className="py-2.5 capitalize font-medium">{s}</td>
-                      <td className="py-2.5">{(sc.annualRate * 100).toFixed(1)}%</td>
-                      <td className="py-2.5">${sc.projectedValue.toLocaleString()}</td>
-                      <td
-                        className={`py-2.5 font-semibold ${
-                          sc.roiPercent > 0 ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      >
-                        {sc.roiPercent >= 0 ? "+" : ""}
-                        {sc.roiPercent.toFixed(1)}%
+                    <tr key={s} className="border-b border-slate-100">
+                      <td className="py-2.5 capitalize font-medium text-jet-black">{s}</td>
+                      <td className="py-2.5 type-mono-num text-slate-700">{(sc.annualRate * 100).toFixed(1)}%</td>
+                      <td className="py-2.5 type-mono-num text-slate-700">${sc.projectedValue.toLocaleString()}</td>
+                      <td className={`py-2.5 type-mono-num font-semibold ${sc.roiPercent > 0 ? "text-pure-green" : "text-brick-red"}`}>
+                        {sc.roiPercent >= 0 ? "+" : ""}{sc.roiPercent.toFixed(1)}%
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </BrickCard>
 
-          {/* Disclaimer */}
-          <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-relaxed">
+          <p className="type-body-sm text-slate-500 leading-relaxed">
             Projections are model estimates, not financial advice. LEGO set values are
             unpredictable. Past performance does not guarantee future results.{" "}
-            <Link href="/sealed-forecast/methodology" className="underline hover:text-[hsl(var(--foreground))]">
+            <Link href="/sealed-forecast/methodology" className="text-bright-blue hover:underline underline-offset-2">
               How it works →
             </Link>
           </p>

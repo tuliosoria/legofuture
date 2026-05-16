@@ -6,6 +6,7 @@ import { getPricingFromBundle } from "@/lib/domain/sealed-estimate";
 import { computeForecast } from "@/lib/domain/sealed-forecast";
 import { ModelDetails } from "@/components/sealed/ModelDetails";
 import { DetailClient } from "./DetailClient";
+import { ChipBadge } from "@/components/ui/ChipBadge";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,6 +27,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+const signalToAccentBg: Record<string, string> = {
+  Buy: "bg-bright-blue text-pure-white",
+  Hold: "bg-sunshine-yellow text-jet-black",
+  Sell: "bg-jet-black text-pure-white",
+};
+
+const signalToChipColor: Record<string, "blue" | "yellow" | "black"> = {
+  Buy: "blue",
+  Hold: "yellow",
+  Sell: "black",
+};
+
 export default async function SlugPage({ params }: PageProps) {
   const { slug } = await params;
   const product = getProductBySlug(slug);
@@ -43,25 +56,58 @@ export default async function SlugPage({ params }: PageProps) {
     }
   );
 
+  const heroBg = signalToAccentBg[forecast.signal] ?? "bg-slate-100 text-jet-black";
+
   return (
-    <main className="mx-auto max-w-screen-xl px-4 py-10">
-      {/* Breadcrumb */}
-      <nav className="mb-6 text-xs text-[hsl(var(--muted-foreground))]">
-        <Link href="/sealed-forecast" className="hover:text-[hsl(var(--foreground))]">
-          ← Back to Catalog
-        </Link>
-      </nav>
+    <main>
+      {/* Hero band */}
+      <div className={`w-full border-b-2 border-jet-black ${heroBg}`}>
+        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-8">
+          <nav className="mb-4 type-body-sm opacity-70">
+            <Link href="/sealed-forecast" className="hover:underline">
+              ← Back to Catalog
+            </Link>
+          </nav>
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="type-eyebrow opacity-70 mb-2">
+                {product.theme} · Set #{product.setNumber} · {product.releaseYear}
+              </p>
+              <h1 className="type-display-2 mb-3">{product.name}</h1>
+              <div className="flex flex-wrap gap-3 items-center">
+                <ChipBadge color={signalToChipColor[forecast.signal] ?? "black"}>
+                  {forecast.signal}
+                </ChipBadge>
+                {product.retired && (
+                  <ChipBadge color="black">Retired</ChipBadge>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-6 flex-wrap">
+              <div>
+                <p className="type-eyebrow opacity-70 mb-1">MSRP</p>
+                <p className="type-mono-num text-xl font-bold">
+                  ${product.originalMsrp.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="type-eyebrow opacity-70 mb-1">Current Price</p>
+                <p className="type-mono-num text-xl font-bold">
+                  ${forecast.currentPrice.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <h1 className="mb-1 text-3xl font-extrabold">{product.name}</h1>
-      <p className="mb-8 text-sm text-[hsl(var(--muted-foreground))]">
-        {product.theme} · Set #{product.setNumber} · {product.releaseYear}
-      </p>
+      {/* Body */}
+      <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
+        <DetailClient product={product} forecast={forecast} />
 
-      <DetailClient product={product} forecast={forecast} />
-
-      {/* Model Details (server) */}
-      <div className="mt-8">
-        <ModelDetails product={product} forecast={forecast} />
+        <div className="mt-8">
+          <ModelDetails product={product} forecast={forecast} />
+        </div>
       </div>
     </main>
   );

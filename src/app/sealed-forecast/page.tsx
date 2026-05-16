@@ -30,12 +30,16 @@ export default async function SealedForecastPage() {
 
   return (
     <main>
-      <div className="bg-[hsl(var(--card))] border-b border-[hsl(var(--border))]">
-        <div className="mx-auto max-w-screen-xl px-4 py-8">
-          <h1 className="text-3xl font-extrabold">Sealed LEGO Set Forecasts</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))] max-w-xl">
-            Data-driven 5-year return projections for sealed-in-box LEGO sets. Filter by
-            theme, status, or investment signal.
+      {/* Page header */}
+      <div className="bg-pure-white border-b-2 border-jet-black">
+        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
+          <p className="type-eyebrow text-slate-500 mb-2">Sealed set forecasts</p>
+          <h1 className="type-display-2 text-jet-black mb-3">
+            Build your position.
+          </h1>
+          <p className="type-body-lg text-slate-700 max-w-xl">
+            Data-driven 5-year return projections for sealed-in-box LEGO sets.
+            Filter by theme, status, or investment signal.
           </p>
         </div>
       </div>
