@@ -1,0 +1,25 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - |
+          : > .env.production
+          for key in AWS_REGION DYNAMODB_TABLE PRICECHARTING_API_TOKEN REBRICKABLE_API_KEY LEGAL_OPERATOR_NAME LEGAL_CONTACT_EMAIL PRIVACY_REQUEST_EMAIL LEGAL_BUSINESS_ADDRESS LEGAL_CONTACT_URL; do
+            value="$(printenv "$key" || true)"
+            if [ -n "$value" ]; then
+              printf '%s=%s\n' "$key" "$value" >> .env.production
+            fi
+          done
+    build:
+      commands:
+        - npm run verify:app
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*

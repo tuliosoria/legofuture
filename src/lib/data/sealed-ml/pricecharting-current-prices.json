@@ -1,0 +1,142 @@
+{
+  "10179": {
+    "newPrice": 1999.5,
+    "cibPrice": 1004.14,
+    "loosePrice": 395,
+    "salesVolume": "62",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10182": {
+    "newPrice": 3000,
+    "cibPrice": 644.6,
+    "loosePrice": 199.02,
+    "salesVolume": "85",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10189": {
+    "newPrice": 570,
+    "cibPrice": 280.67,
+    "loosePrice": 63,
+    "salesVolume": "21",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10221": {
+    "newPrice": 1350,
+    "cibPrice": 819.5,
+    "loosePrice": 580,
+    "salesVolume": "134",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10276": {
+    "newPrice": 1113.7,
+    "cibPrice": 725,
+    "loosePrice": 459,
+    "salesVolume": "232",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10294": {
+    "newPrice": 690.5,
+    "cibPrice": 521.76,
+    "loosePrice": 400,
+    "salesVolume": "350",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10300": {
+    "newPrice": 119.11,
+    "cibPrice": 103.85,
+    "loosePrice": 45.77,
+    "salesVolume": "716",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10307": {
+    "newPrice": 684.7,
+    "cibPrice": 498.05,
+    "loosePrice": 354.77,
+    "salesVolume": "128",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "10497": {
+    "newPrice": 108.39,
+    "cibPrice": 81.5,
+    "loosePrice": 52.36,
+    "salesVolume": "404",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "21043": {
+    "newPrice": 86.5,
+    "cibPrice": 54.5,
+    "loosePrice": 30.01,
+    "salesVolume": "562",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "21044": {
+    "newPrice": 46.35,
+    "cibPrice": 26.5,
+    "loosePrice": 16.24,
+    "salesVolume": "453",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "21319": {
+    "newPrice": 98.66,
+    "cibPrice": 62.2,
+    "loosePrice": 40,
+    "salesVolume": "1243",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "40531": {
+    "newPrice": 25.54,
+    "cibPrice": 19.2,
+    "loosePrice": 13.86,
+    "salesVolume": "412",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "42082": {
+    "newPrice": 400,
+    "cibPrice": 277.95,
+    "loosePrice": 155.24,
+    "salesVolume": "134",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "42115": {
+    "newPrice": 424.5,
+    "cibPrice": 219,
+    "loosePrice": 189.27,
+    "salesVolume": "235",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "71043": {
+    "newPrice": 409.98,
+    "cibPrice": 333.55,
+    "loosePrice": 166.51,
+    "salesVolume": "433",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "75192": {
+    "newPrice": 728.32,
+    "cibPrice": 625,
+    "loosePrice": 300,
+    "salesVolume": "568",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "75257": {
+    "newPrice": 169.98,
+    "cibPrice": 111.52,
+    "loosePrice": 68.81,
+    "salesVolume": "720",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "75313": {
+    "newPrice": 1250,
+    "cibPrice": 958.88,
+    "loosePrice": 575,
+    "salesVolume": "618",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  },
+  "75981": {
+    "newPrice": 24.99,
+    "cibPrice": 20.39,
+    "loosePrice": 6.69,
+    "salesVolume": "125",
+    "lastFetched": "2026-05-16T04:19:37.109Z"
+  }
+}
