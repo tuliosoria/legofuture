@@ -5,7 +5,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "sync": "node scripts/sync-pricecharting-to-dynamo.mjs",
+    "hydrate": "node scripts/hydrate-from-dynamo.mjs",
+    "prebuild": "node scripts/hydrate-from-dynamo.mjs",
     "build": "next build",
+    "refresh": "npm run sync && npm run build",
     "start": "next start",
     "lint": "eslint .",
     "hooks:install": "git config core.hooksPath .githooks",

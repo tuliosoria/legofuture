@@ -5,13 +5,15 @@ import rawCatalog from "@/lib/data/sealed-ml/sealed-catalog.json";
 
 const catalog = rawCatalog as SealedProduct[];
 
-// In-process cache (warm after first call)
 let cachedCatalog: SealedProduct[] | null = null;
 
 /**
- * Returns the full bundled LEGO catalog.
- * In a production environment this could be augmented from DynamoDB,
- * but for the MVP we always serve from the committed JSON.
+ * Returns the LegoFuture catalog.
+ *
+ * Source of truth: DynamoDB table `legofuture-cache` (pk="CATALOG"). The
+ * JSON file imported above is regenerated from DynamoDB by
+ * `scripts/hydrate-from-dynamo.mjs`, which runs as the `prebuild` step.
+ * No mock / hand-edited fallback is used.
  */
 export async function loadStoredCatalog(): Promise<SealedProduct[]> {
   if (cachedCatalog) return cachedCatalog;

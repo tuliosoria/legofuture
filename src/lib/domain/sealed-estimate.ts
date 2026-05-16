@@ -3,14 +3,24 @@ import pricingData from "@/lib/data/sealed-ml/pricecharting-current-prices.json"
 
 type PricingMap = Record<string, ProductPricing>;
 
-const bundledPricing = pricingData as unknown as PricingMap;
+/**
+ * Pricing snapshot. Source of truth: DynamoDB table `legofuture-cache`
+ * (pk="PRICING"), populated by `scripts/sync-pricecharting-to-dynamo.mjs`.
+ * The JSON file imported above is regenerated from DynamoDB at prebuild
+ * by `scripts/hydrate-from-dynamo.mjs`. No mock fallback.
+ */
+const hydratedPricing = pricingData as unknown as PricingMap;
 
-// In-process memory cache (per Lambda, ~5 min effective TTL)
 const memCache = new Map<string, { data: ProductPricing; expiresAt: number }>();
 const MEM_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * Returns the latest pricing snapshot for a product from the hydrated
+ * (DynamoDB-sourced) dataset. Returns null only if PriceCharting had no
+ * data at the last sync.
+ */
 export function getPricingFromBundle(id: string): ProductPricing | null {
-  return bundledPricing[id] ?? null;
+  return hydratedPricing[id] ?? null;
 }
 
 export async function fetchLivePricing(
