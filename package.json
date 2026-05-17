@@ -11,6 +11,7 @@
     "sync:community": "node --env-file=.env.local scripts/sync-community.mjs",
     "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
     "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
+    "sync:bl-validate": "node --env-file=.env.local scripts/validate-bricklink.mjs",
     "setup:ddb": "bash scripts/setup-dynamodb.sh",
     "build": "next build",
     "start": "next start",
