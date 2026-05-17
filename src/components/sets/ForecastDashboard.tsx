@@ -59,7 +59,7 @@ function buildCatalogUrl(page: number, state: FilterState, includeOrphans: boole
 export function ForecastDashboard({
   initialItems,
   initialTotal,
-  includeOrphans = false,
+  includeOrphans = true,
   _testForceLoadMore = false,
 }: ForecastDashboardProps) {
   const [state, setState] = useState<FilterState>(DEFAULT_FILTER_STATE);
@@ -245,14 +245,14 @@ export function ForecastDashboard({
               <a
                 href={
                   includeOrphans
-                    ? "/set-forecast"
-                    : "/set-forecast?includeOrphans=1"
+                    ? "/set-forecast?pricingOnly=1"
+                    : "/set-forecast"
                 }
                 className="underline text-slate-600 hover:text-jet-black"
               >
                 {includeOrphans
-                  ? "Hide untracked sets"
-                  : "Show all sets (incl. no pricing data)"}
+                  ? "Show only sets with pricing data"
+                  : "Show all sets"}
               </a>
             </p>
           </div>

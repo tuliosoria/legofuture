@@ -37,17 +37,24 @@ const EMPTY_PRICING = {
 export default async function SetForecastPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ includeOrphans?: string }> | { includeOrphans?: string };
+  searchParams?: Promise<{ pricingOnly?: string }> | { pricingOnly?: string };
 }) {
   const params = (await Promise.resolve(searchParams)) ?? {};
-  const includeOrphans = params.includeOrphans === "1";
+  // Default view: show the FULL catalog (~27K sets). Opt-out via ?pricingOnly=1
+  // to narrow down to sets with at least one pricing provider.
+  const pricingOnly = params.pricingOnly === "1";
+  const includeOrphans = !pricingOnly;
 
-  // Load catalog — orphan scan capped to SSR_ORPHAN_CAP to prevent timeout.
-  // Client discovers the real total via /api/sets/catalog (Plan C).
+  // Load catalog — orphan scan capped to SSR_ORPHAN_CAP for fast paint.
+  // The client refines the real total via /api/sets/catalog (Plan C).
   const catalog = await loadStoredCatalog({
     includeOrphans,
     orphanCap: includeOrphans ? SSR_ORPHAN_CAP : undefined,
   });
+
+  // Sort alphabetically so the SSR first page is deterministic and matches
+  // the default sort applied by /api/sets/catalog.
+  catalog.sort((a, b) => a.name.localeCompare(b.name));
 
   const initialTotal = catalog.length;
   const firstPage = catalog.slice(0, SSR_FIRST_PAGE);
