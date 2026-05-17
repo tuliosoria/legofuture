@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "sync": "node scripts/sync-pricecharting-to-dynamo.mjs",
+    "sync:pricecharting": "node --env-file=.env.local scripts/sync-pricecharting-to-dynamo.mjs",
     "sync:community": "node --env-file=.env.local scripts/sync-community.mjs",
     "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
     "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
