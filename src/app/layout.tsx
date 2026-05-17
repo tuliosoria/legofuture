@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { FirstVisitDisclaimer } from "@/components/layout/first-visit-disclaimer";
 
 const jakarta = Plus_Jakarta_Sans({
   weight: "800",
@@ -63,6 +64,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <FirstVisitDisclaimer />
       </body>
     </html>
   );

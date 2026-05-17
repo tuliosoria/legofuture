@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "www.pricecharting.com" },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/sealed-forecast", destination: "/set-forecast", permanent: true },
+      { source: "/sealed-forecast/:path*", destination: "/set-forecast/:path*", permanent: true },
+      { source: "/api/sealed/:path*", destination: "/api/sets/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
