@@ -1,53 +1,49 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
-import type { LegoSet, Forecast, LegoTheme, Scenario } from "@/lib/types/lego";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import type { Forecast, LegoTheme } from "@/lib/types/lego";
+import { LEGO_THEMES } from "@/lib/data/lego-themes";
 import { ProductForecastCard } from "./ProductForecastCard";
 import { SkeletonForecastCard } from "./SkeletonForecastCard";
 import { TopBuyOpportunities } from "./TopBuyOpportunities";
-import { ChipBadge } from "@/components/ui/ChipBadge";
-
-interface CatalogItem {
-  product: LegoSet;
-  forecast: Forecast;
-}
+import { FilterSidebar } from "./filter-sidebar";
+import { SearchBox } from "./search-box";
+import {
+  DEFAULT_FILTER_STATE,
+  isDefaultState,
+  runFilterPipeline,
+  type CatalogItem,
+  type FilterState,
+} from "@/lib/domain/lego-filter";
 
 interface ForecastDashboardProps {
   items: CatalogItem[];
-  loading?: boolean;
 }
 
-const ALL_THEMES: LegoTheme[] = [
-  "Icons", "Star Wars", "Harry Potter", "Technic", "Ideas",
-  "Modular Buildings", "Architecture", "Marvel", "Friends", "GWP", "Other",
-];
+export function ForecastDashboard({ items }: ForecastDashboardProps) {
+  const [state, setState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-const SCENARIOS: { value: Scenario; label: string }[] = [
-  { value: "pessimist", label: "Pessimist" },
-  { value: "moderate", label: "Moderate" },
-  { value: "optimist", label: "Optimist" },
-];
+  const updateState = useCallback((next: FilterState) => {
+    startTransition(() => setState(next));
+  }, []);
 
-const SORT_OPTIONS = [
-  { value: "roi", label: "Highest ROI" },
-  { value: "price", label: "Highest Value" },
-  { value: "signal", label: "Growth Rate" },
-];
+  const reset = useCallback(() => {
+    startTransition(() => setState(DEFAULT_FILTER_STATE));
+  }, []);
 
-const SIGNALS = [
-  { value: "Buy" as const, label: "Buy", color: "blue" as const },
-  { value: "Hold" as const, label: "Hold", color: "yellow" as const },
-  { value: "Sell" as const, label: "Sell", color: "black" as const },
-];
+  const pipeline = useMemo(() => runFilterPipeline(items, state), [items, state]);
 
-export function ForecastDashboard({ items, loading }: ForecastDashboardProps) {
-  const [query, setQuery] = useState("");
-  const [theme, setTheme] = useState<LegoTheme | "">("");
-  const [statusFilter, setStatusFilter] = useState<"" | "retired" | "current">("");
-  const [signal, setSignal] = useState<"" | "Buy" | "Hold" | "Sell">("");
-  const [scenario, setScenario] = useState<Scenario>("moderate");
-  const [sort, setSort] = useState("roi");
+  const themeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const meta of LEGO_THEMES) counts[meta.name] = 0;
+    for (const { product } of pipeline.preThemeResults) {
+      counts[product.theme] = (counts[product.theme] ?? 0) + 1;
+    }
+    return counts;
+  }, [pipeline.preThemeResults]);
 
   const topBuys = useMemo(
     () =>
@@ -58,167 +54,123 @@ export function ForecastDashboard({ items, loading }: ForecastDashboardProps) {
     [items]
   );
 
-  const filtered = useMemo(() => {
-    let out = items;
-    const q = query.toLowerCase().trim();
-    if (q)
-      out = out.filter(
-        ({ product }) =>
-          product.name.toLowerCase().includes(q) ||
-          product.setNumber.includes(q) ||
-          product.theme.toLowerCase().includes(q)
-      );
-    if (theme) out = out.filter(({ product }) => product.theme === theme);
-    if (statusFilter === "retired") out = out.filter(({ product }) => product.retired);
-    if (statusFilter === "current") out = out.filter(({ product }) => !product.retired);
-    if (signal) out = out.filter(({ forecast }) => forecast.signal === signal);
-
-    const scenarioData = (f: Forecast) => f.scenarios[scenario] ?? f;
-    out = [...out].sort((a, b) => {
-      const fa = scenarioData(a.forecast);
-      const fb = scenarioData(b.forecast);
-      switch (sort) {
-        case "price": return fb.projectedValue - fa.projectedValue;
-        case "signal": return fb.annualRate - fa.annualRate;
-        default: return fb.roiPercent - fa.roiPercent;
-      }
+  const total = items.length;
+  const matched = pipeline.results.length;
+  const pinAliasTheme = (t: LegoTheme) =>
+    updateState({
+      ...state,
+      themes: state.themes.includes(t) ? state.themes : [...state.themes, t],
+      query: "",
     });
-    return out;
-  }, [items, query, theme, statusFilter, signal, scenario, sort]);
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
-      {/* Top Buys */}
-      {!loading && topBuys.length > 0 && (
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+        <p className="type-body-sm text-slate-600">
+          <span className="type-mono-num text-jet-black">{total.toLocaleString()}</span>{" "}
+          sets tracked
+        </p>
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          aria-label="Open filters"
+          className="md:hidden inline-flex items-center gap-2 rounded-card border-2 border-jet-black bg-pure-white px-3 py-2 type-body-sm text-jet-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue"
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          Filters
+        </button>
+      </div>
+
+      {topBuys.length > 0 && (
         <div className="mb-10">
           <TopBuyOpportunities items={topBuys} />
         </div>
       )}
 
-      {/* Filter row */}
-      <div className="mb-6 space-y-3">
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search sets…"
-            className="w-full h-11 rounded-card border-2 border-jet-black bg-pure-white py-2 pl-9 pr-4 type-body-sm text-jet-black placeholder:text-slate-500 focus:outline-none focus:ring-[3px] focus:ring-bright-blue"
-          />
-        </div>
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <FilterSidebar
+          state={state}
+          onChange={updateState}
+          onReset={reset}
+          isDefault={isDefaultState(state)}
+          themeCounts={themeCounts}
+          mobileOpen={mobileFiltersOpen}
+          onMobileClose={() => setMobileFiltersOpen(false)}
+        />
 
-        {/* Chip filters */}
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Signal */}
-          <span className="type-eyebrow text-slate-500 mr-1">Signal:</span>
-          <ChipBadge
-            color="slate"
-            active={signal === ""}
-            onClick={() => setSignal("")}
-          >
-            All
-          </ChipBadge>
-          {SIGNALS.map(({ value, label, color }) => (
-            <ChipBadge
-              key={value}
-              color={color}
-              active={signal === value}
-              onClick={() => setSignal(signal === value ? "" : value)}
-            >
-              {label}
-            </ChipBadge>
-          ))}
-        </div>
+        <section className="flex-1 min-w-0" aria-label="Set forecasts">
+          <div className="mb-4">
+            <SearchBox
+              value={state.query}
+              onChange={(query) => updateState({ ...state, query })}
+              resultCount={matched}
+              aliasTheme={pipeline.aliases.theme}
+              aliasStatus={pipeline.aliases.status}
+              onPinAliasTheme={pinAliasTheme}
+            />
+          </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Status */}
-          <span className="type-eyebrow text-slate-500 mr-1">Status:</span>
-          {(["", "retired", "current"] as const).map((s) => (
-            <ChipBadge
-              key={s || "all"}
-              color="slate"
-              active={statusFilter === s}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s === "" ? "All" : s === "retired" ? "Retired" : "In Production"}
-            </ChipBadge>
-          ))}
-        </div>
+          <p className="mb-4 type-body-sm text-slate-500" aria-live="polite">
+            Showing <span className="type-mono-num text-jet-black">{matched}</span>{" "}
+            of <span className="type-mono-num text-jet-black">{total}</span> sets
+          </p>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Scenario */}
-          <span className="type-eyebrow text-slate-500 mr-1">Scenario:</span>
-          {SCENARIOS.map(({ value, label }) => (
-            <ChipBadge
-              key={value}
-              color={value === "optimist" ? "green" : value === "moderate" ? "blue" : "black"}
-              active={scenario === value}
-              onClick={() => setScenario(value)}
-            >
-              {label}
-            </ChipBadge>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Theme */}
-          <span className="type-eyebrow text-slate-500 mr-1">Theme:</span>
-          <ChipBadge
-            color="slate"
-            active={theme === ""}
-            onClick={() => setTheme("")}
-          >
-            All
-          </ChipBadge>
-          {ALL_THEMES.map((t) => (
-            <ChipBadge
-              key={t}
-              color="slate"
-              active={theme === t}
-              onClick={() => setTheme(theme === t ? "" : t)}
-            >
-              {t}
-            </ChipBadge>
-          ))}
-        </div>
-
-        {/* Sort */}
-        <div className="flex items-center gap-2">
-          <span className="type-eyebrow text-slate-500">Sort:</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="rounded-card border-2 border-jet-black bg-pure-white px-3 py-1.5 type-body-sm focus:outline-none focus:ring-2 focus:ring-bright-blue"
-          >
-            {SORT_OPTIONS.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
+          {isPending && matched === 0 ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonForecastCard key={i} />
+              ))}
+            </div>
+          ) : matched === 0 ? (
+            <div className="rounded-card border-2 border-dashed border-jet-black/40 bg-pure-white p-10 text-center">
+              <p className="type-body text-slate-600">
+                No sets match these filters.
+              </p>
+              {!isDefaultState(state) && (
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="mt-3 inline-flex rounded-chip border-2 border-jet-black bg-sunshine-yellow px-3 py-1 type-body-sm text-jet-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              {pipeline.results.map(({ product, forecast }) => (
+                <ProductForecastCard
+                  key={product.id}
+                  product={product}
+                  forecast={renderForecast(forecast, state.scenario)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
-
-      {/* Results count */}
-      {!loading && (
-        <p className="mb-4 type-body-sm text-slate-500">
-          {filtered.length} set{filtered.length !== 1 ? "s" : ""}
-        </p>
-      )}
-
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {loading
-          ? [...Array(10)].map((_, i) => <SkeletonForecastCard key={i} />)
-          : filtered.map(({ product, forecast }) => (
-              <ProductForecastCard key={product.id} product={product} forecast={forecast} />
-            ))}
-      </div>
-
-      {!loading && filtered.length === 0 && (
-        <p className="mt-16 text-center type-body text-slate-500">
-          Nothing to stack yet — try adjusting your filters.
-        </p>
-      )}
     </div>
   );
 }
+
+/**
+ * Project the chosen scenario's headline numbers onto the top-level
+ * Forecast so the card displays the user-selected outlook.
+ */
+function renderForecast(
+  forecast: Forecast,
+  scenario: FilterState["scenario"]
+): Forecast {
+  const s = forecast.scenarios[scenario];
+  if (!s) return forecast;
+  return {
+    ...forecast,
+    projectedValue: s.projectedValue,
+    dollarGain: s.dollarGain,
+    roiPercent: s.roiPercent,
+    annualRate: s.annualRate,
+    signal: s.signal,
+  };
+}
+
+export type { CatalogItem };
