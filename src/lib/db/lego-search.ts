@@ -1,10 +1,10 @@
 import "server-only";
 
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import type { LegoSet } from "@/lib/types/lego";
 import { eraFor, coerceTheme } from "@/lib/data/lego-themes";
 import { getDynamo, getTableName } from "./dynamo";
-import { cacheGet, cachePut } from "./cache";
+import { isEligibleForDashboard } from "@/lib/domain/lego-catalog-eligibility";
 import gwpDenylistData from "@/lib/data/lego-ml/lego-catalog-gwp-denylist.json";
 import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json";
 
@@ -22,10 +22,6 @@ import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json
  *   2. Catalog overrides (shallow-merge, last-wins) from local JSON
  *   3. Computed fields: `setNumberPrefix` + `era`
  */
-
-const CATALOG_CACHE_TYPE = "lego-catalog";
-const CATALOG_CACHE_KEY = "v1";
-const CATALOG_TTL_SEC = 300;
 
 const GWP_DENYLIST: ReadonlySet<string> = new Set(gwpDenylistData as string[]);
 
@@ -87,49 +83,27 @@ function stripKeys(item: Record<string, unknown>): LegoSet {
   return rest as unknown as LegoSet;
 }
 
-async function fetchCatalogFromDdb(): Promise<LegoSet[]> {
-  const client = getDynamo();
+export async function loadStoredCatalog(opts?: { includeOrphans?: boolean }): Promise<LegoSet[]> {
+  const ddb = getDynamo();
   const table = getTableName();
-  if (!client || !table) {
-    throw new Error(
-      "DynamoDB not configured (DYNAMODB_TABLE env var missing)."
-    );
+  if (!ddb || !table) {
+    throw new Error("DynamoDB not configured (DYNAMODB_TABLE env var missing).");
   }
-
-  const items: Record<string, unknown>[] = [];
+  const all: LegoSet[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
   do {
-    const res = await client.send(
-      new QueryCommand({
-        TableName: table,
-        KeyConditionExpression: "pk = :pk",
-        ExpressionAttributeValues: { ":pk": "CATALOG" },
-        ExclusiveStartKey,
-      })
-    );
-    items.push(...((res.Items as Record<string, unknown>[]) || []));
-    ExclusiveStartKey = res.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
+    const res = await ddb.send(new ScanCommand({
+      TableName: table,
+      FilterExpression: "begins_with(pk, :p) AND sk = :sk",
+      ExpressionAttributeValues: { ":p": "CATALOG#PRODUCT#", ":sk": "v1" },
+      ExclusiveStartKey,
+    }));
+    for (const item of res.Items || []) all.push(item as LegoSet);
+    ExclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
   } while (ExclusiveStartKey);
 
-  return items.map(stripKeys).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export async function loadStoredCatalog(): Promise<LegoSet[]> {
-  const cached = await cacheGet<LegoSet[]>(
-    CATALOG_CACHE_TYPE,
-    CATALOG_CACHE_KEY
-  );
-  if (cached) return cached;
-
-  const raw = await fetchCatalogFromDdb();
-  const filtered = raw.filter(
-    (set) => !GWP_DENYLIST.has(set.id) && !isNonRetailSetId(set)
-  );
-  const fresh = filtered.map(applyOverridesAndComputed);
-  await cachePut(CATALOG_CACHE_TYPE, CATALOG_CACHE_KEY, fresh, CATALOG_TTL_SEC);
-  return fresh;
+  if (opts?.includeOrphans) return all;
+  return all.filter(isEligibleForDashboard);
 }
 
 export async function getProductById(id: string): Promise<LegoSet | null> {
