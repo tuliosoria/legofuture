@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "sync": "node scripts/sync-pricecharting-to-dynamo.mjs",
+    "setup:ddb": "bash scripts/setup-dynamodb.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
