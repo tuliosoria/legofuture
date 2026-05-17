@@ -19,9 +19,10 @@ import {
 
 interface ForecastDashboardProps {
   items: CatalogItem[];
+  includeOrphans?: boolean;
 }
 
-export function ForecastDashboard({ items }: ForecastDashboardProps) {
+export function ForecastDashboard({ items, includeOrphans = false }: ForecastDashboardProps) {
   const [state, setState] = useState<FilterState>(DEFAULT_FILTER_STATE);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -119,6 +120,13 @@ export function ForecastDashboard({ items }: ForecastDashboardProps) {
             <p className="mt-2 type-body-sm text-slate-500" aria-live="polite">
               Showing <span className="type-mono-num text-jet-black">{matched}</span>{" "}
               of <span className="type-mono-num text-jet-black">{total}</span> sets
+              {" · "}
+              <a
+                href={includeOrphans ? "/set-forecast" : "/set-forecast?includeOrphans=1"}
+                className="underline text-slate-600 hover:text-jet-black"
+              >
+                {includeOrphans ? "Hide untracked sets" : "Show all sets (incl. no pricing data)"}
+              </a>
             </p>
           </div>
 

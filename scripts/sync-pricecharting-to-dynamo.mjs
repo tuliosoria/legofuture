@@ -57,7 +57,7 @@ function toHistoryItem(p, nowIso) {
 }
 
 async function fetchPage(offset) {
-  const url = `${ENDPOINT}?platform=lego&t=${TOKEN}&offset=${offset}`;
+  const url = `${ENDPOINT}?q=lego&t=${TOKEN}&offset=${offset}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} at offset=${offset}`);
@@ -68,7 +68,13 @@ async function fetchPage(offset) {
       `API error at offset=${offset}: ${data["error-message"] || data.status}`,
     );
   }
-  return Array.isArray(data.products) ? data.products : [];
+  const all = Array.isArray(data.products) ? data.products : [];
+  return all.filter((p) => {
+    const consoleName = String(p["console-name"] || "");
+    if (!consoleName.startsWith("LEGO ")) return false;
+    if (consoleName === "LEGO Games") return false;
+    return true;
+  });
 }
 
 async function batchWriteAll(items) {
@@ -94,7 +100,7 @@ async function batchWriteAll(items) {
   }
 }
 
-function toCatalogItem(p) {
+function toCatalogItem(p, nowIso) {
   return {
     pk: `CATALOG#PRODUCT#${p.id}`,
     sk: "v1",
@@ -104,6 +110,9 @@ function toCatalogItem(p) {
     genre: p.genre ?? null,
     releaseDate: p["release-date"] ?? null,
     raw: p,
+    enrichmentStatus: "pricecharting-only",
+    pricingProviderCount: 1,
+    updatedAt: nowIso,
   };
 }
 
@@ -135,13 +144,23 @@ async function main() {
 
   try {
     let offset = 0;
+    let consecutiveEmpty = 0;
+    const MAX_EMPTY_STREAK = 3;
     while (true) {
       const products = await fetchPage(offset);
       pages += 1;
-      if (products.length === 0) break;
+      if (products.length === 0) {
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= MAX_EMPTY_STREAK) break;
+        offset += PAGE_SIZE;
+        await sleep(1100);
+        continue;
+      } else {
+        consecutiveEmpty = 0;
+      }
 
       const nowIso = new Date().toISOString();
-      const catalogItems = products.map(toCatalogItem);
+      const catalogItems = products.map((p) => toCatalogItem(p, nowIso));
       const pricingItems = products.map((p) => toPricingItem(p, nowIso));
       await batchWriteAll(catalogItems);
       await batchWriteAll(pricingItems);
@@ -167,8 +186,11 @@ async function main() {
         console.log(`[pc-sync] fetched=${total} pages=${pages}`);
       }
 
-      if (products.length < PAGE_SIZE) break;
-      offset += products.length;
+      if (products.length < PAGE_SIZE) {
+        // Filtered count below page size doesn't imply EOF — only consecutive
+        // empty pages do. Continue paginating.
+      }
+      offset += PAGE_SIZE;
       await sleep(1100); // respect API rate limit (1 req/sec)
     }
 

@@ -14,8 +14,14 @@ export const metadata: Metadata = {
     "Browse price forecasts for LEGO sets. Filter by theme, retirement status, and investment signal.",
 };
 
-export default async function SetForecastPage() {
-  const catalog = await loadStoredCatalog();
+export default async function SetForecastPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ includeOrphans?: string }> | { includeOrphans?: string };
+}) {
+  const params = (await Promise.resolve(searchParams)) ?? {};
+  const includeOrphans = params.includeOrphans === "1";
+  const catalog = await loadStoredCatalog({ includeOrphans });
 
   const items = await Promise.all(
     catalog.map(async (product) => {
@@ -52,7 +58,7 @@ export default async function SetForecastPage() {
           </div>
         </div>
       </div>
-      <ForecastDashboard items={items} />
+      <ForecastDashboard items={items} includeOrphans={includeOrphans} />
     </main>
   );
 }

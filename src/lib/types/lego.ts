@@ -34,6 +34,12 @@ export type Confidence = "high" | "medium" | "low";
 /** Forecast scenario: pessimist = 0.5× base CAGR, optimist = 1.5× */
 export type Scenario = "pessimist" | "moderate" | "optimist";
 
+export type EnrichmentStatus =
+  | "rebrickable-only"
+  | "pricecharting-only"
+  | "fully-enriched"
+  | "legacy-curated";
+
 /** A LEGO set in the catalog */
 export interface LegoSet {
   id: string;
@@ -62,6 +68,8 @@ export interface LegoSet {
   rebrickableId?: string;
   /** sparse-data guard */
   forecastEligible?: boolean;
+  enrichmentStatus?: EnrichmentStatus;
+  pricingProviderCount?: number;
 }
 
 /** Pricing snapshot sourced from PriceCharting */

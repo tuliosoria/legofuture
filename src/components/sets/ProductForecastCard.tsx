@@ -90,6 +90,14 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
         </div>
 
         {/* Stats */}
+        {product.pricingProviderCount === 0 ? (
+          <div className="mb-3 rounded-sm border border-dashed border-jet-black/40 bg-slate-50 p-3 text-center">
+            <p className="type-eyebrow text-slate-500">No pricing data yet</p>
+            <p className="type-body-sm text-slate-600 mt-1">
+              Catalog entry only — projections unavailable.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
             <p className="type-eyebrow text-slate-500">Now</p>
@@ -117,6 +125,7 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
             </p>
           </div>
         </div>
+        )}
 
         <BrickButton variant="ghost" size="sm" className="w-full justify-center text-jet-black">
           View Forecast →
