@@ -1,7 +1,6 @@
 /**
- * Default CAGR assumptions used to seed the retirement calculator.
- * These are coarse, opinionated starting points by "era" — users can
- * override on the form.
+ * Default CAGR assumptions by "era" used to seed forecast scenarios.
+ * Coarse, opinionated starting points.
  */
 
 import type { LegoEra } from "@/lib/types/lego";

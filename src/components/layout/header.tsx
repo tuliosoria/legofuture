@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/set-forecast", label: "Set Forecast" },
   { href: "/set-forecast/methodology", label: "Methodology" },
-  { href: "/calculator", label: "Calculator" },
 ];
 
 export function Header() {
