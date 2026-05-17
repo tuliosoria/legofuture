@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "sync": "node scripts/sync-pricecharting-to-dynamo.mjs",
+    "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
+    "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
     "setup:ddb": "bash scripts/setup-dynamodb.sh",
     "build": "next build",
     "start": "next start",
@@ -28,6 +30,7 @@
     "google-trends-api": "^4.9.2",
     "lucide-react": "^1.8.0",
     "next": "^16.2.4",
+    "papaparse": "^5.5.3",
     "postcss": "^8.5.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
