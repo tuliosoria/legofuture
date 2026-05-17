@@ -1,6 +1,6 @@
 # Full LEGO Catalog Ingestion + Rebrickable Enrichment
 
-**Status:** Design
+**Status:** SUPERSEDED by `2026-05-17-multisource-lego-ml-forecast-design.md` (broader scope: multi-source ingestion, ML training pipeline, continuous retraining).
 **Date:** 2026-05-17
 **Scope:** Phase 1 + Phase 2 of a larger 5-phase plan to bring LegoFuture data parity with PokeFuture. This spec covers expanding the catalog from 20 curated sets to the full PriceCharting LEGO inventory (~2,000+ products) and enriching every row with Rebrickable metadata.
 
