@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 npm run sync:pricecharting \
+  && npm run sync:pc-history \
   && npm run sync:trends \
   && npm run sync:community \
   && npm run sync:images \

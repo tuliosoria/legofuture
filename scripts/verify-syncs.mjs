@@ -23,6 +23,7 @@ const REGION = process.env.AWS_REGION || "us-east-1";
 const EXPECTED_SCRIPTS = [
   "sync-pricecharting",
   "sync-pc-csv",
+  "scrape-pc-history",
   "sync-trends",
   "sync-community",
   "sync-images",
