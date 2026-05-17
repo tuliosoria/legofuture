@@ -65,20 +65,11 @@ export function ForecastDashboard({ items }: ForecastDashboardProps) {
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+      <div className="mb-6">
         <p className="type-body-sm text-slate-600">
           <span className="type-mono-num text-jet-black">{total.toLocaleString()}</span>{" "}
           sets tracked
         </p>
-        <button
-          type="button"
-          onClick={() => setMobileFiltersOpen(true)}
-          aria-label="Open filters"
-          className="md:hidden inline-flex items-center gap-2 rounded-card border-2 border-jet-black bg-pure-white px-3 py-2 type-body-sm text-jet-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue"
-        >
-          <SlidersHorizontal className="h-4 w-4" aria-hidden />
-          Filters
-        </button>
       </div>
 
       {topBuys.length > 0 && (
@@ -99,21 +90,35 @@ export function ForecastDashboard({ items }: ForecastDashboardProps) {
         />
 
         <section className="flex-1 min-w-0" aria-label="Set forecasts">
-          <div className="mb-4">
-            <SearchBox
-              value={state.query}
-              onChange={(query) => updateState({ ...state, query })}
-              resultCount={matched}
-              aliasTheme={pipeline.aliases.theme}
-              aliasStatus={pipeline.aliases.status}
-              onPinAliasTheme={pinAliasTheme}
-            />
+          {/* Sticky toolbar: search + result count + mobile filters trigger.
+              Site header is h-14 (56px) sticky z-50, so this docks just below at top-14 z-30. */}
+          <div className="sticky top-14 z-30 -mx-4 md:-mx-8 mb-4 border-b-2 border-jet-black/10 bg-paper/95 px-4 md:px-8 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <SearchBox
+                  value={state.query}
+                  onChange={(query) => updateState({ ...state, query })}
+                  resultCount={matched}
+                  aliasTheme={pipeline.aliases.theme}
+                  aliasStatus={pipeline.aliases.status}
+                  onPinAliasTheme={pinAliasTheme}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFiltersOpen(true)}
+                aria-label="Open filters"
+                className="md:hidden inline-flex flex-shrink-0 items-center gap-2 rounded-card border-2 border-jet-black bg-pure-white px-3 h-11 type-body-sm text-jet-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue"
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                Filters
+              </button>
+            </div>
+            <p className="mt-2 type-body-sm text-slate-500" aria-live="polite">
+              Showing <span className="type-mono-num text-jet-black">{matched}</span>{" "}
+              of <span className="type-mono-num text-jet-black">{total}</span> sets
+            </p>
           </div>
-
-          <p className="mb-4 type-body-sm text-slate-500" aria-live="polite">
-            Showing <span className="type-mono-num text-jet-black">{matched}</span>{" "}
-            of <span className="type-mono-num text-jet-black">{total}</span> sets
-          </p>
 
           {isPending && matched === 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">

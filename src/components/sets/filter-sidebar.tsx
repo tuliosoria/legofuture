@@ -227,7 +227,7 @@ export function FilterSidebar({
         aria-label="Filters"
         className="hidden md:block md:w-64 md:flex-shrink-0"
       >
-        <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card border-2 border-jet-black bg-pure-white p-4 shadow-sm">
+        <div className="sticky top-[4.5rem] max-h-[calc(100vh-5rem)] overflow-y-auto rounded-card border-2 border-jet-black bg-pure-white p-4 shadow-sm">
           {content}
         </div>
       </aside>
