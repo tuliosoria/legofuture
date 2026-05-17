@@ -48,6 +48,7 @@ export function Footer() {
               <p className="type-eyebrow text-slate-500 mb-3">Legal</p>
               <ul className="space-y-2">
                 {[
+                  { href: "/legal", label: "Legal Overview" },
                   { href: "/terms", label: "Terms of Use" },
                   { href: "/privacy", label: "Privacy Policy" },
                   { href: "/privacy-rights", label: "Privacy Rights" },
