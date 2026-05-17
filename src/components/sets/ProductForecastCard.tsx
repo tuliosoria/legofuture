@@ -40,7 +40,8 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
     retired: product.retired,
   });
 
-  const accentTop = signalToAccent[forecast.signal] ?? "black";
+  const noPricing = product.pricingProviderCount === 0;
+  const accentTop: AccentColor = noPricing ? "black" : (signalToAccent[forecast.signal] ?? "black");
   const roi = forecast.roiPercent;
   const dollarGain = forecast.dollarGain;
 
