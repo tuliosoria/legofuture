@@ -1,17 +1,30 @@
 export type LegoTheme =
-  | "Star Wars"
   | "Technic"
-  | "Architecture"
-  | "Modular Buildings"
+  | "Star Wars"
   | "Icons"
+  | "Creator Expert"
   | "Ideas"
+  | "City"
+  | "Architecture"
+  | "Botanical"
+  | "Seasonal"
+  | "Modular Buildings"
   | "Harry Potter"
   | "Marvel"
+  | "DC"
+  | "Minecraft"
   | "Friends"
+  | "Disney"
+  | "Speed Champions"
+  | "Ninjago"
   | "GWP"
   | "Other";
 
+export type LegoEra = "Classic" | "Modern" | "Licensed" | "Premium";
+
 export type ProductStatus = "retired" | "current";
+
+export type LegoCondition = "new-sealed" | "complete" | "loose";
 
 /** User-facing recommendation signal */
 export type Recommendation = "buy" | "hold" | "sell";
@@ -31,12 +44,24 @@ export interface LegoSet {
   releaseYear: number;
   /** true when officially retired by LEGO */
   retired: boolean;
+  /** null if still active; otherwise calendar year of retirement */
+  retirementYear?: number | null;
+  retiringSoon?: boolean;
+  productionRunYears?: number;
   pieceCount: number;
   minifigCount: number;
+  hasExclusiveMinifigs?: boolean;
   /** Original MSRP in USD */
   originalMsrp: number;
   imageUrl: string;
   slug: string;
+  era?: LegoEra;
+  /** first 2-3 digits of setNumber — era/line proxy */
+  setNumberPrefix?: string;
+  /** stable identifier only — never used for live API */
+  rebrickableId?: string;
+  /** sparse-data guard */
+  forecastEligible?: boolean;
 }
 
 /** Pricing snapshot sourced from PriceCharting */
