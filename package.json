@@ -13,6 +13,7 @@
     "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
     "sync:bl-validate": "node --env-file=.env.local scripts/validate-bricklink.mjs",
     "setup:ddb": "bash scripts/setup-dynamodb.sh",
+    "ml:train": "python3 lego-ml/train.py",
     "verify:scripts": "node --env-file=.env.local scripts/verify-syncs.mjs",
     "sync:all": "bash scripts/sync-all.sh",
     "build": "next build",

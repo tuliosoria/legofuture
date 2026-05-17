@@ -1,0 +1,6 @@
+xgboost>=2.0
+pandas>=2.0
+numpy>=1.26
+boto3>=1.34
+python-dotenv>=1.0
+scikit-learn>=1.4
