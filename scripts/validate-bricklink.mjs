@@ -126,7 +126,7 @@ async function collectSets() {
 }
 
 async function tryVariant(setId, variant) {
-  const url = `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setId}-${variant}`;
+  const url = `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${setId}-${variant}#T=S`;
   if (!isValidSetMarketplaceUrl(url)) {
     return { ok: false, url, status: 0, reason: "invalid-url" };
   }

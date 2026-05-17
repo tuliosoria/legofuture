@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Set not found" }, { status: 404 });
   }
 
-  const url = resolveBricklinkSetUrl(product.setNumber);
+  const resolved = resolveBricklinkSetUrl(product.setNumber);
+  const url =
+    resolved && !resolved.includes("#T=S") ? `${resolved}#T=S` : resolved;
   const isSetPage = url !== null && isValidSetMarketplaceUrl(url);
 
   return NextResponse.json(
