@@ -1,37 +1,69 @@
-import type { Forecast, LegoSet } from "@/lib/types/lego";
-import { buildKeyDrivers } from "@/lib/domain/key-drivers";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import type { Confidence } from "@/lib/types/lego";
 
 interface ModelDetailsProps {
-  product: LegoSet;
-  forecast: Forecast;
+  confidence: Confidence;
+  updatedAt: string;
+  sources?: string;
 }
 
-const iconForImpact = (impact: "positive" | "neutral" | "negative") => {
-  if (impact === "positive") return <TrendingUp className="h-4 w-4 text-emerald-400" aria-hidden />;
-  if (impact === "negative") return <TrendingDown className="h-4 w-4 text-rose-400" aria-hidden />;
-  return <Minus className="h-4 w-4 text-zinc-400" aria-hidden />;
+const COPY: Record<Confidence, { label: string; tagline: string; tone: string }> = {
+  high: {
+    label: "High confidence",
+    tagline: "Strong history + peer support + signals aligned",
+    tone: "text-pure-green",
+  },
+  medium: {
+    label: "Medium confidence",
+    tagline: "Adequate history; some signal noise",
+    tone: "text-sunshine-yellow",
+  },
+  low: {
+    label: "Low confidence",
+    tagline: "Thin history or conflicting signals",
+    tone: "text-brick-red",
+  },
 };
 
-export function ModelDetails({ product, forecast }: ModelDetailsProps) {
-  const drivers = buildKeyDrivers(product, forecast);
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
 
+export function ModelDetails({
+  confidence,
+  updatedAt,
+  sources = "PriceCharting + Community",
+}: ModelDetailsProps) {
+  const copy = COPY[confidence];
   return (
-    <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-        Key Model Drivers
-      </h3>
-      <ul className="flex flex-col gap-3">
-        {drivers.map((driver, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <span className="mt-0.5">{iconForImpact(driver.impact)}</span>
-            <div>
-              <p className="text-sm font-medium leading-snug">{driver.label}</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">{driver.explanation}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="rounded-card border-2 border-jet-black bg-pure-white p-5">
+      <h3 className="type-eyebrow text-slate-500 mb-3">Model details</h3>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <dt className="type-body-sm text-slate-500">Source</dt>
+          <dd className="type-body font-semibold text-jet-black">{sources}</dd>
+        </div>
+        <div>
+          <dt className="type-body-sm text-slate-500">Data freshness</dt>
+          <dd className="type-body font-semibold text-jet-black">
+            {formatDate(updatedAt)}
+          </dd>
+        </div>
+        <div>
+          <dt className="type-body-sm text-slate-500">Confidence</dt>
+          <dd className={`type-body font-bold ${copy.tone}`}>{copy.label}</dd>
+          <p className="type-body-sm text-slate-600 mt-0.5">{copy.tagline}</p>
+        </div>
+      </dl>
     </div>
   );
 }

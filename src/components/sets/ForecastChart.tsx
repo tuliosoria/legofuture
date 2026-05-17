@@ -2,104 +2,79 @@
 
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
   Legend,
 } from "recharts";
-import type { Forecast } from "@/lib/types/lego";
 
 interface ForecastChartProps {
-  forecast: Forecast;
+  series: Array<{
+    year: number;
+    pessimist: number;
+    moderate: number;
+    optimist: number;
+  }>;
 }
 
-const SP500_MONTHLY_RATE = Math.pow(1.105, 1 / 12) - 1;
-
-function buildChartData(forecast: Forecast) {
-  const months = 60;
-  const monthlyRate = Math.pow(1 + forecast.annualRate, 1 / 12) - 1;
-  const pessMonthly = Math.pow(1 + forecast.scenarios.pessimist.annualRate, 1 / 12) - 1;
-  const optMonthly = Math.pow(1 + forecast.scenarios.optimist.annualRate, 1 / 12) - 1;
-
-  const base = forecast.currentPrice;
-  const data = [];
-
-  for (let m = 0; m <= months; m += 6) {
-    const yr = m / 12;
-    const label = m === 0 ? "Now" : Number.isInteger(yr) ? `Y${yr}` : `Y${Math.floor(yr)}½`;
-    data.push({
-      label,
-      moderate: Math.round(base * Math.pow(1 + monthlyRate, m)),
-      pessimist: Math.round(base * Math.pow(1 + pessMonthly, m)),
-      optimist: Math.round(base * Math.pow(1 + optMonthly, m)),
-      sp500: Math.round(base * Math.pow(1 + SP500_MONTHLY_RATE, m)),
-    });
-  }
-  return data;
-}
-
-export function ForecastChart({ forecast }: ForecastChartProps) {
-  const data = buildChartData(forecast);
-
+export function ForecastChart({ series }: ForecastChartProps) {
+  if (series.length === 0) return null;
+  const data = series.map((p) => ({
+    label: p.year === 0 ? "Now" : `Y${p.year}`,
+    ...p,
+  }));
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(218 16% 20%)" />
-        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(215 20% 60%)" }} />
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} />
         <YAxis
-          tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-          tick={{ fontSize: 11, fill: "hsl(215 20% 60%)" }}
-          width={55}
+          tickFormatter={(v) =>
+            v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`
+          }
+          tick={{ fontSize: 11, fill: "#64748b" }}
+          width={60}
         />
         <Tooltip
-          formatter={(value) => [`$${Number(value).toLocaleString()}`, ""]}
+          formatter={(v) => `$${Number(v).toLocaleString()}`}
           contentStyle={{
-            backgroundColor: "hsl(220 14% 11%)",
-            border: "1px solid hsl(218 16% 20%)",
+            backgroundColor: "#ffffff",
+            border: "2px solid #0b0b0b",
             borderRadius: 8,
             fontSize: 12,
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Area
+        <Line
           type="monotone"
           dataKey="optimist"
           stroke="#10b981"
-          fill="#10b98120"
-          strokeWidth={1.5}
-          strokeDasharray="4 2"
+          strokeWidth={2}
+          strokeDasharray="5 3"
+          dot={false}
           name="Optimist"
         />
-        <Area
+        <Line
           type="monotone"
           dataKey="moderate"
-          stroke="hsl(46 100% 50%)"
-          fill="hsl(46 100% 50% / 0.15)"
+          stroke="#0066ff"
           strokeWidth={2.5}
+          dot={{ r: 3 }}
           name="Moderate"
         />
-        <Area
+        <Line
           type="monotone"
           dataKey="pessimist"
-          stroke="#f87171"
-          fill="#f8717120"
-          strokeWidth={1.5}
-          strokeDasharray="4 2"
+          stroke="#ef4444"
+          strokeWidth={2}
+          strokeDasharray="5 3"
+          dot={false}
           name="Pessimist"
         />
-        <Area
-          type="monotone"
-          dataKey="sp500"
-          stroke="#94a3b8"
-          fill="none"
-          strokeWidth={1.5}
-          strokeDasharray="6 3"
-          name="S&P 500"
-        />
-      </AreaChart>
+      </LineChart>
     </ResponsiveContainer>
   );
 }

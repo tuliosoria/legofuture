@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProductById } from "@/lib/db/lego-search";
-import {
-  fetchLivePricing,
-  getPricingFromDdb,
-} from "@/lib/domain/lego-estimate";
+import { getProductBySlug, getProductById } from "@/lib/db/lego-search";
+import { getPricing } from "@/lib/domain/lego-estimate";
 import { enforceIpRateLimit } from "@/lib/db/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -16,23 +13,36 @@ export async function GET(request: NextRequest) {
   });
   if (blocked) return blocked;
 
+  const slug = request.nextUrl.searchParams.get("slug");
   const id = request.nextUrl.searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "Missing id parameter" }, { status: 400 });
+  if (!slug && !id) {
+    return NextResponse.json(
+      { error: "Missing slug parameter" },
+      { status: 400 }
+    );
   }
 
-  const product = await getProductById(id);
+  const product = slug
+    ? await getProductBySlug(slug)
+    : await getProductById(id!);
   if (!product) {
-    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    return NextResponse.json({ error: "Set not found" }, { status: 404 });
   }
 
-  const live = await fetchLivePricing(product);
-  const stored = await getPricingFromDdb(id);
-  const pricing = live ?? stored;
+  const pricing = await getPricing(product);
+  const updatedAt = pricing?.lastFetched ?? null;
 
-  if (!pricing) {
-    return NextResponse.json({ error: "Pricing not available" }, { status: 404 });
-  }
+  const body = {
+    newSealed: pricing?.newPrice ?? null,
+    complete: pricing?.cibPrice ?? null,
+    loose: pricing?.loosePrice ?? null,
+    updatedAt,
+  };
 
-  return NextResponse.json({ id, pricing, source: live ? "live" : "ddb" });
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "public, max-age=300",
+      "X-Data-Freshness": updatedAt ?? new Date().toISOString(),
+    },
+  });
 }

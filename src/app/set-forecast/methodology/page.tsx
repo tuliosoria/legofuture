@@ -1,92 +1,139 @@
+import type { Metadata } from "next";
 import { SectionDivider } from "@/components/ui/SectionDivider";
+
+export const metadata: Metadata = {
+  title: "How LegoFuture Forecasts Work | LegoFuture",
+  description:
+    "Plain-English overview of the data sources, scenarios, signals, and confidence ratings behind LegoFuture set forecasts.",
+};
 
 export default function MethodologyPage() {
   const sections = [
     {
       color: "red" as const,
-      id: "what",
-      title: "What are we predicting?",
+      id: "sources",
+      title: "Where the data comes from",
       content: (
-        <p>
-          We estimate the <strong>5-year projected value</strong> of a sealed (never-opened)
-          LEGO set, expressed as a compound annual growth rate (CAGR) and a total return on
-          investment (ROI) percentage.
-        </p>
+        <>
+          <p>
+            We pull from four public sources and combine them into a single
+            forecast for every set in our catalog.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 mt-3">
+            <li>
+              <strong>PriceCharting</strong> — sealed, complete, and loose set
+              prices, current and historical.
+            </li>
+            <li>
+              <strong>Rebrickable</strong> — set metadata: themes, piece counts,
+              minifigs, retirement years.
+            </li>
+            <li>
+              <strong>Community</strong> — Reddit mentions across r/lego,
+              r/legomarket, and r/legomania.
+            </li>
+            <li>
+              <strong>Google Trends</strong> — search interest in the set or
+              theme over time.
+            </li>
+          </ul>
+        </>
       ),
     },
     {
       color: "blue" as const,
-      id: "model",
-      title: "The Model",
+      id: "scenarios",
+      title: "Three scenarios per set",
       content: (
         <>
           <p>
-            Our MVP uses a <strong>deterministic rules-based model</strong> as a placeholder for
-            a trained XGBoost regressor (coming in a future update). The rules are derived from
-            historical LEGO secondary-market patterns:
+            Every forecast comes in three flavors so you can see the full range
+            of what could happen, not just one guess.
           </p>
-          <ul className="list-disc pl-5 space-y-1 mt-3">
-            <li><strong>Retired sets:</strong> Base CAGR of 8%, plus up to 5% extra for set age (0.5% per year after retirement, capped at 5%).</li>
-            <li><strong>Current sets:</strong> Base CAGR of 3% while still in production.</li>
-            <li><strong>GWP / promotional sets:</strong> 4% CAGR baseline.</li>
-            <li><strong>Already-run-up sets</strong> (current price &gt;2× MSRP): CAGR multiplied by 0.75 to account for limited remaining upside.</li>
-            <li><strong>Under-valued sets</strong> (current price &lt;0.9× MSRP): CAGR gets +1% bonus.</li>
+          <ul className="list-disc pl-5 space-y-1.5 mt-3">
+            <li>
+              <strong>Pessimist</strong> — what the price might do if demand
+              softens, the set sticks around at retail, or the market cools
+              broadly.
+            </li>
+            <li>
+              <strong>Moderate</strong> — our base-case estimate, in line with
+              how similar sets have behaved historically.
+            </li>
+            <li>
+              <strong>Optimist</strong> — what could happen if the set retires
+              early, collector interest accelerates, or a related franchise
+              catches fire.
+            </li>
           </ul>
         </>
       ),
     },
     {
       color: "green" as const,
-      id: "scenarios",
-      title: "Scenarios",
+      id: "signals",
+      title: "Buy, Hold, or Sell",
       content: (
         <>
-          <p>Each forecast includes three scenarios to communicate uncertainty:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-3">
-            <li><strong>Optimist (1.5×):</strong> Assumes strong demand, early retirement, or collector hype.</li>
-            <li><strong>Moderate (1×):</strong> The base estimate — our best guess.</li>
-            <li><strong>Pessimist (0.5×):</strong> Accounts for poor liquidity, market saturation, or prolonged production runs.</li>
+          <p>
+            Each set gets a single plain recommendation based on its
+            moderate-scenario projection.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 mt-3">
+            <li>
+              <strong>Buy</strong> — projected appreciation comfortably exceeds
+              what cash or a broad index would earn.
+            </li>
+            <li>
+              <strong>Hold</strong> — projected appreciation roughly keeps pace
+              with the broader market.
+            </li>
+            <li>
+              <strong>Sell</strong> — projected appreciation is flat or
+              negative; the cash could likely work harder elsewhere.
+            </li>
           </ul>
         </>
       ),
     },
     {
       color: "yellow" as const,
-      id: "pricing",
-      title: "Pricing Data",
+      id: "confidence",
+      title: "High, Medium, or Low confidence",
       content: (
-        <p>
-          Current prices are sourced from{" "}
-          <a href="https://www.pricecharting.com" target="_blank" rel="noopener noreferrer" className="text-bright-blue hover:underline">
-            PriceCharting.com
-          </a>
-          . We use the &ldquo;new&rdquo; (sealed) price tier wherever available. Data is cached
-          in our catalog and refreshed periodically.
-        </p>
+        <>
+          <p>
+            Confidence tells you how much weight to give the forecast. It
+            reflects how much historical data we have, how many similar sets we
+            can compare against, and whether our signals agree with each other.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 mt-3">
+            <li>
+              <strong>High</strong> — long price history, lots of comparable
+              sets, signals pointing the same direction.
+            </li>
+            <li>
+              <strong>Medium</strong> — enough history to be useful, but some
+              signals disagree or peer data is thin.
+            </li>
+            <li>
+              <strong>Low</strong> — thin price history or conflicting signals.
+              Treat the forecast as a rough indication, not a hard call.
+            </li>
+          </ul>
+        </>
       ),
     },
     {
       color: "red" as const,
-      id: "signals",
-      title: "Investment Signals",
-      content: (
-        <ul className="list-disc pl-5 space-y-1">
-          <li><strong>Buy:</strong> Moderate-scenario CAGR &gt; 7% — market-beating expected return.</li>
-          <li><strong>Hold:</strong> CAGR between 3–7% — broadly in line with inflation/equities.</li>
-          <li><strong>Sell:</strong> CAGR &lt; 3% or set is younger than 12 months (insufficient track record).</li>
-        </ul>
-      ),
-    },
-    {
-      color: "blue" as const,
-      id: "limitations",
-      title: "Limitations",
+      id: "limits",
+      title: "What this is — and isn't",
       content: (
         <p>
-          This model is for informational purposes only. LEGO set values are subject to
-          unpredictable factors: licensing changes, re-releases, economic conditions, and
-          collector trends. Past appreciation does not guarantee future returns. Never invest
-          more than you can afford to lose.
+          LegoFuture is informational. Forecasts are model estimates — not
+          guarantees. LEGO set values can be moved by re-releases, licensing
+          news, broader economic conditions, and collector trends none of us
+          can predict. Always verify prices before buying or selling.
         </p>
       ),
     },
@@ -94,16 +141,20 @@ export default function MethodologyPage() {
 
   return (
     <main>
-      {/* Page title band */}
       <div className="bg-pure-white border-b-2 border-jet-black px-4 py-10">
         <div className="mx-auto max-w-[1240px]">
           <p className="type-eyebrow text-slate-500 mb-2">How it works</p>
-          <h1 className="type-display-2 text-jet-black">How our forecast works.</h1>
+          <h1 className="type-display-2 text-jet-black">
+            How our forecast works.
+          </h1>
+          <p className="type-body-lg text-slate-700 max-w-2xl mt-3">
+            A plain-English overview of the data, scenarios, and signals
+            behind every LegoFuture forecast.
+          </p>
         </div>
       </div>
 
-      {/* Alternating sections */}
-      {sections.map((section, i) => (
+      {sections.map((section) => (
         <div key={section.id}>
           <SectionDivider color={section.color} />
           <section className="px-4 py-12 bg-paper" id={section.id}>

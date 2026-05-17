@@ -1,22 +1,33 @@
-import type { Confidence } from "@/lib/types/lego";
-import { getSignalBg, getConfidenceBg } from "@/lib/domain/lego-forecast";
+import type { Recommendation } from "@/lib/types/lego";
 
-export function SignalBadge({ signal }: { signal: "Buy" | "Hold" | "Sell" }) {
+const LABELS: Record<Recommendation, string> = {
+  buy: "Buy",
+  hold: "Hold",
+  sell: "Sell",
+};
+
+const STYLES: Record<Recommendation, string> = {
+  buy: "bg-bright-blue text-pure-white border-jet-black",
+  hold: "bg-sunshine-yellow text-jet-black border-jet-black",
+  sell: "bg-jet-black text-pure-white border-jet-black",
+};
+
+export function SignalBadge({
+  recommendation,
+  size = "md",
+}: {
+  recommendation: Recommendation;
+  size?: "sm" | "md";
+}) {
+  const sizing =
+    size === "sm"
+      ? "px-3 py-1 text-[11px] tracking-[0.14em]"
+      : "px-4 py-1.5 text-xs tracking-[0.16em]";
   return (
     <span
-      className={`inline-flex min-w-[5rem] items-center justify-center rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] shadow-[0_8px_20px_rgba(0,0,0,0.2)] ${getSignalBg(signal)}`}
+      className={`inline-flex items-center justify-center rounded-full border-2 font-extrabold uppercase shadow-[0_2px_0_rgba(0,0,0,0.18)] ${sizing} ${STYLES[recommendation]}`}
     >
-      {signal}
-    </span>
-  );
-}
-
-export function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getConfidenceBg(confidence)}`}
-    >
-      {confidence} confidence
+      {LABELS[recommendation]}
     </span>
   );
 }

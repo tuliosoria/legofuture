@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProductById } from "@/lib/db/lego-search";
-import { getPricing } from "@/lib/domain/lego-estimate";
-import { computeForecast } from "@/lib/domain/lego-forecast";
+import { getProductBySlug, getProductById } from "@/lib/db/lego-search";
+import { loadHistory } from "@/lib/db/lego-history";
 import { enforceIpRateLimit } from "@/lib/db/rate-limit";
-import type { HistoryPoint } from "@/lib/types/lego";
+import type { LegoCondition } from "@/lib/types/lego";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Synthetic monthly price history derived from current price + assumed
- * momentum. Real PriceCharting historical data will replace this later.
- */
+const VALID_CONDITIONS: ReadonlyArray<LegoCondition> = [
+  "new-sealed",
+  "complete",
+  "loose",
+];
+
 export async function GET(request: NextRequest) {
   const blocked = await enforceIpRateLimit(request, {
     bucket: "set-history-ip",
@@ -19,37 +20,34 @@ export async function GET(request: NextRequest) {
   });
   if (blocked) return blocked;
 
+  const slug = request.nextUrl.searchParams.get("slug");
   const id = request.nextUrl.searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "Missing id parameter" }, { status: 400 });
+  const conditionRaw = (request.nextUrl.searchParams.get("condition") ??
+    "new-sealed") as LegoCondition;
+  const condition: LegoCondition = VALID_CONDITIONS.includes(conditionRaw)
+    ? conditionRaw
+    : "new-sealed";
+
+  if (!slug && !id) {
+    return NextResponse.json(
+      { error: "Missing slug parameter" },
+      { status: 400 }
+    );
   }
 
-  const product = await getProductById(id);
+  const product = slug
+    ? await getProductBySlug(slug)
+    : await getProductById(id!);
   if (!product) {
-    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    return NextResponse.json({ error: "Set not found" }, { status: 404 });
   }
 
-  const pricing = await getPricing(product);
-  const forecast = computeForecast(product, pricing);
-  const currentPrice = forecast.currentPrice;
+  const history = await loadHistory(product, condition);
 
-  const months = 24;
-  const monthlyRate = Math.pow(1 + forecast.annualRate, 1 / 12) - 1;
-  const history: HistoryPoint[] = [];
-
-  const now = new Date();
-  for (let m = months; m >= 0; m--) {
-    const d = new Date(now);
-    d.setUTCMonth(d.getUTCMonth() - m);
-    history.push({
-      date: d.toISOString().slice(0, 10),
-      price: Math.round(currentPrice / Math.pow(1 + monthlyRate, m)),
-    });
-  }
-
-  return NextResponse.json({
-    id,
-    history,
-    note: "Synthetic history — real historical data will be available in a future update.",
+  return NextResponse.json(history, {
+    headers: {
+      "Cache-Control": "public, max-age=300",
+      "X-Data-Freshness": new Date().toISOString(),
+    },
   });
 }
