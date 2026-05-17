@@ -91,15 +91,18 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          {[
-            { label: "Now", value: `$${forecast.currentPrice.toLocaleString()}` },
-            { label: "5y Proj.", value: `$${forecast.projectedValue.toLocaleString()}` },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <p className="type-eyebrow text-slate-500">{label}</p>
-              <p className="type-mono-num text-jet-black">{value}</p>
-            </div>
-          ))}
+          <div>
+            <p className="type-eyebrow text-slate-500">Now</p>
+            <p className="type-mono-num text-jet-black">
+              ${forecast.currentPrice.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p className="type-eyebrow text-slate-500">5y Proj.</p>
+            <p className="type-mono-num font-bold text-pure-green">
+              ${forecast.projectedValue.toLocaleString()}
+            </p>
+          </div>
           <div>
             <p className="type-eyebrow text-slate-500">ROI</p>
             <p className={`type-mono-num flex items-center gap-0.5 ${roiColor(roi)}`}>
