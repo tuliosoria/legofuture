@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  LegoFuture ML retrainer — container-image Lambda invoked on a weekly
+  EventBridge schedule. Reads catalog/pricing/history rows from the
+  ``legofuture-cache`` DynamoDB table and writes back MODEL#/META# rows.
+
+Parameters:
+  DynamoTableName:
+    Type: String
+    Default: legofuture-cache
+    Description: DynamoDB table the retrainer reads from and writes to.
+  ScheduleExpression:
+    Type: String
+    Default: rate(7 days)
+    Description: EventBridge schedule for invoking the retrainer.
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 2048
+
+Resources:
+  RetrainerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ../..
+      DockerTag: latest
+    Properties:
+      FunctionName: legofuture-ml-retrainer
+      PackageType: Image
+      ImageConfig:
+        Command:
+          - retrain.lambda_handler
+      MemorySize: 2048
+      Timeout: 900
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref DynamoTableName
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: DynamoDBReadWriteLegoFutureCache
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:BatchGetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:BatchWriteItem
+                - dynamodb:DescribeTable
+              Resource:
+                - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoTableName}
+                - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoTableName}/index/*
+      Events:
+        WeeklyRetrainSchedule:
+          Type: Schedule
+          Properties:
+            Name: legofuture-ml-retrainer-weekly
+            Description: Weekly retrain of the LegoFuture price model.
+            Schedule: !Ref ScheduleExpression
+            Enabled: true
+
+Outputs:
+  RetrainerFunctionArn:
+    Description: ARN of the ML retrainer Lambda function.
+    Value: !GetAtt RetrainerFunction.Arn
+  RetrainerFunctionRoleArn:
+    Description: IAM role ARN created for the retrainer function.
+    Value: !GetAtt RetrainerFunctionRole.Arn

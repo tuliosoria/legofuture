@@ -13,6 +13,7 @@
     "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
     "sync:bl-validate": "node --env-file=.env.local scripts/validate-bricklink.mjs",
     "setup:ddb": "bash scripts/setup-dynamodb.sh",
+    "infra:build": "cd infra/lego-ml-retrainer && sam build || echo 'sam build skipped (SAM CLI not installed locally)'",
     "ml:train": "python3 lego-ml/train.py",
     "ml:retrain": "python3 lego-ml/retrain.py",
     "verify:scripts": "node --env-file=.env.local scripts/verify-syncs.mjs",

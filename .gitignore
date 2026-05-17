@@ -38,3 +38,6 @@ lego-ml/.venv/
 lego-ml/__pycache__/
 **/__pycache__/
 *.pyc
+
+# SAM CLI build artifacts
+infra/lego-ml-retrainer/.aws-sam/
