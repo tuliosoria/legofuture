@@ -39,6 +39,23 @@ const ddb = DynamoDBDocumentClient.from(
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function monthlyHistorySk(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
+function toHistoryItem(p, nowIso) {
+  return {
+    pk: `HISTORY#PRODUCT#${p.id}`,
+    sk: monthlyHistorySk(new Date(nowIso)),
+    id: String(p.id),
+    loose: p["loose-price"] ?? null,
+    cib: p["cib-price"] ?? null,
+    new: p["new-price"] ?? null,
+    source: "pricecharting-snapshot",
+    capturedAt: nowIso,
+  };
+}
+
 async function fetchPage(offset) {
   const url = `${ENDPOINT}?platform=lego&t=${TOKEN}&offset=${offset}`;
   const res = await fetch(url);
@@ -114,6 +131,7 @@ async function main() {
   let pages = 0;
   let total = 0;
   let lastLoggedBucket = 0;
+  let historySnapshotsWritten = 0;
 
   try {
     let offset = 0;
@@ -127,6 +145,20 @@ async function main() {
       const pricingItems = products.map((p) => toPricingItem(p, nowIso));
       await batchWriteAll(catalogItems);
       await batchWriteAll(pricingItems);
+
+      try {
+        const historyItems = products.map((p) => toHistoryItem(p, nowIso));
+        for (const Item of historyItems) {
+          await ddb.send(
+            new PutCommand({ TableName: TABLE, Item }),
+          );
+          historySnapshotsWritten += 1;
+        }
+      } catch (histErr) {
+        console.warn(
+          `[pc-sync] WARN history snapshot write failed: ${histErr?.message || histErr}`,
+        );
+      }
 
       total += products.length;
       const bucket = Math.floor(total / 500);
@@ -148,6 +180,7 @@ async function main() {
       completed_at: completedAt,
       source: "pricecharting",
       token_present: true,
+      history_snapshots_written: historySnapshotsWritten,
     };
 
     await ddb.send(

@@ -45,6 +45,10 @@ const ddb = DynamoDBDocumentClient.from(
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function monthlyHistorySk(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
 async function* scanCatalog() {
   let ExclusiveStartKey;
   do {
@@ -92,7 +96,7 @@ function extractImageUrls(html) {
   return { primary, thumbnail };
 }
 
-async function findPriceChartingId(setNumber) {
+async function findPriceChartingProduct(setNumber) {
   const url = `${SEARCH_ENDPOINT}?platform=lego&q=${encodeURIComponent(setNumber)}&t=${TOKEN}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`search HTTP ${res.status}`);
@@ -104,7 +108,12 @@ async function findPriceChartingId(setNumber) {
     typeof p["product-name"] === "string" &&
     p["product-name"].includes(needle),
   );
-  return (exact || products[0])?.id || null;
+  return exact || products[0] || null;
+}
+
+async function findPriceChartingId(setNumber) {
+  const product = await findPriceChartingProduct(setNumber);
+  return product?.id || null;
 }
 
 async function fetchProductImages(pcId) {
@@ -122,6 +131,7 @@ async function main() {
   let setsProcessed = 0;
   let imagesLinked = 0;
   let missingCount = 0;
+  let historySnapshotsWritten = 0;
   const failures = [];
 
   for await (const row of scanCatalog()) {
@@ -132,11 +142,38 @@ async function main() {
     setsProcessed += 1;
 
     try {
-      const pcId = await findPriceChartingId(setNumber);
+      const pcProduct = await findPriceChartingProduct(setNumber);
+      const pcId = pcProduct?.id || null;
       await sleep(THROTTLE_MS);
       let imageUrls = null;
       if (pcId) {
         imageUrls = await fetchProductImages(pcId);
+      }
+
+      if (pcProduct) {
+        try {
+          const nowIso = new Date().toISOString();
+          await ddb.send(
+            new PutCommand({
+              TableName: TABLE,
+              Item: {
+                pk: `HISTORY#PRODUCT#${pcId}`,
+                sk: monthlyHistorySk(),
+                id: String(pcId),
+                loose: pcProduct["loose-price"] ?? null,
+                cib: pcProduct["cib-price"] ?? null,
+                new: pcProduct["new-price"] ?? null,
+                source: "pricecharting-snapshot",
+                capturedAt: nowIso,
+              },
+            }),
+          );
+          historySnapshotsWritten += 1;
+        } catch (histErr) {
+          console.warn(
+            `[sync-images] WARN history snapshot failed for set=${setNumber}: ${histErr?.message || histErr}`,
+          );
+        }
       }
       if (!imageUrls) {
         missingCount += 1;
@@ -185,6 +222,7 @@ async function main() {
         images_linked: imagesLinked,
         missing_count: missingCount,
         failure_count: failures.length,
+        history_snapshots_written: historySnapshotsWritten,
         started_at: startedAt,
         completed_at: completedAt,
       },
@@ -208,7 +246,7 @@ async function main() {
   }
 
   console.log(
-    `[sync-images] DONE processed=${setsProcessed} linked=${imagesLinked} missing=${missingCount} failures=${failures.length}`,
+    `[sync-images] DONE processed=${setsProcessed} linked=${imagesLinked} missing=${missingCount} failures=${failures.length} historySnapshots=${historySnapshotsWritten}`,
   );
 }
 
