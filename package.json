@@ -10,6 +10,7 @@
     "sync:rebrickable": "node --env-file=.env.local scripts/sync-rebrickable-catalog.mjs",
     "sync:bricklink": "node --env-file=.env.local scripts/sync-bricklink-pricing.mjs",
     "sync:brickset": "node --env-file=.env.local scripts/sync-brickset-enrichment.mjs",
+    "sync:ebay": "node --env-file=.env.local scripts/sync-ebay-sold-listings.mjs",
     "sync:images": "node --env-file=.env.local scripts/sync-images.mjs",
     "sync:community": "node --env-file=.env.local scripts/sync-community.mjs",
     "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
