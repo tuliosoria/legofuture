@@ -1,31 +1,40 @@
 #!/usr/bin/env python3
-"""LegoFuture XGBoost training pipeline.
+"""LegoFuture Plan B XGBoost JSON-tree training pipeline.
 
-Trains three XGBoost regressors (1yr / 3yr / 5yr price forecasts) on data
-read from DynamoDB `legofuture-cache`, serializes them, base64-chunks the
-bundle into ≤350 KB pieces, and writes MODEL#lego-ml#CHUNK#<n> rows plus a
-MODEL#lego-ml#MANIFEST row. Also writes a META#SYNC_METADATA#<iso> row.
+Trains 1yr / 3yr / 5yr price-forecast models, exports XGBoost tree dumps as
+JSON (format understood by the TypeScript lego-ml-scoring.ts scorer), and
+optionally uploads them to DynamoDB via upload_model.py.
 
-If the corpus is too sparse to train (e.g. no HISTORY rows yet), the script
-writes a META#LIMITATIONS#<iso> row and exits 0 — spec §10. No synthetic
-data is ever fabricated.
+Usage:
+    python lego-ml/train.py --horizon 5y --output models/lego-forecast-5y.json
+    python lego-ml/train.py --horizon all --output models/ --upload-to-ddb
+
+Environment variables (read from repo-root .env.local via python-dotenv):
+    DYNAMODB_TABLE   DynamoDB table name (default: legofuture-cache)
+    AWS_REGION       AWS region          (default: us-east-1)
+    AWS_PROFILE      (optional) named AWS credentials profile
+
+NOTE: Training data is currently sparse (71 sets with PC current prices, no
+historical depth). The models are trained on synthetic forward-return targets
+(currentPrice × 1.10^N) until BrickLink/Brickset/eBay syncs provide real
+historical price depth.  The bundled placeholder JSONs already encode this
+10% growth assumption; real training adds per-set feature signal on top.
 """
 
 from __future__ import annotations
 
-import base64
-import io
+import argparse
 import json
 import logging
 import math
 import os
-import pickle
 import sys
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
 import boto3
+import numpy as np
 import pandas as pd
 import xgboost as xgb
 from boto3.dynamodb.conditions import Attr, Key
@@ -40,11 +49,8 @@ except Exception:  # pragma: no cover
     pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from features import (  # noqa: E402
-    RawSet,
-    build_dataset,
-    feature_columns,
-)
+from extract_features import build_feature_matrix, feature_columns  # noqa: E402
+from upload_model import upload_to_ddb  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,12 +60,16 @@ log = logging.getLogger("lego-ml.train")
 
 TABLE_NAME = os.environ.get("DYNAMODB_TABLE", "legofuture-cache")
 REGION = os.environ.get("AWS_REGION", "us-east-1")
-CHUNK_BYTES = 350 * 1024
-MODEL_PK = "MODEL#lego-ml"
-HORIZONS = (1, 3, 5)
+
+HORIZONS = ["1y", "3y", "5y"]
+HORIZON_YEARS = {"1y": 1, "3y": 3, "5y": 5}
 
 
-def _ddb_table():
+# ---------------------------------------------------------------------------
+# DDB helpers
+# ---------------------------------------------------------------------------
+
+def _table():  # type: ignore[return]
     return boto3.resource("dynamodb", region_name=REGION).Table(TABLE_NAME)
 
 
@@ -83,148 +93,62 @@ def _scan_all(table, **kwargs) -> list[dict]:
     return out
 
 
-def _catalog_rows(table) -> list[dict]:
-    rows = _query_all(table, KeyConditionExpression=Key("pk").eq("CATALOG"))
-    if rows:
-        return rows
-    return _scan_all(
-        table, FilterExpression=Attr("pk").begins_with("CATALOG#PRODUCT#")
-    )
+def _load_records(table) -> list[dict]:
+    """Load and merge CATALOG + PRICING rows from DDB."""
+    catalogs = _query_all(table, KeyConditionExpression=Key("pk").eq("CATALOG"))
+    if not catalogs:
+        catalogs = _scan_all(table, FilterExpression=Attr("pk").begins_with("CATALOG#PRODUCT#"))
 
+    pricings = _query_all(table, KeyConditionExpression=Key("pk").eq("PRICING"))
+    if not pricings:
+        pricings = _scan_all(table, FilterExpression=Attr("pk").begins_with("PRICING#PRODUCT#"))
 
-def _pricing_rows(table) -> list[dict]:
-    rows = _query_all(table, KeyConditionExpression=Key("pk").eq("PRICING"))
-    if rows:
-        return rows
-    return _scan_all(
-        table, FilterExpression=Attr("pk").begins_with("PRICING#PRODUCT#")
-    )
-
-
-def _id_from_sk(sk: str) -> str | None:
-    if not sk:
-        return None
-    if sk.startswith("PRODUCT#"):
-        return sk.split("#", 1)[1]
-    return None
-
-
-def _id_from_pk(pk: str, prefix: str) -> str | None:
-    if not pk or not pk.startswith(prefix):
-        return None
-    return pk[len(prefix):]
-
-
-def load_raw_sets(table) -> list[RawSet]:
-    catalogs = _catalog_rows(table)
-    pricings = _pricing_rows(table)
-
-    def _key(item: dict) -> str | None:
+    def _pid(item: dict) -> str | None:
         pid = item.get("id") or item.get("productId")
         if pid:
             return str(pid)
-        pid = _id_from_sk(str(item.get("sk", "")))
-        if pid:
-            return pid
+        sk = str(item.get("sk", ""))
+        if sk.startswith("PRODUCT#"):
+            return sk.split("#", 1)[1]
+        pk = str(item.get("pk", ""))
         for prefix in ("CATALOG#PRODUCT#", "PRICING#PRODUCT#"):
-            pid = _id_from_pk(str(item.get("pk", "")), prefix)
-            if pid:
-                return pid
+            if pk.startswith(prefix):
+                return pk[len(prefix):]
         return None
 
-    cat_by_id = {k: c for c in catalogs if (k := _key(c))}
-    price_by_id = {k: p for p in pricings if (k := _key(p))}
+    cat_by_id = {k: c for c in catalogs if (k := _pid(c))}
+    price_by_id = {k: p for p in pricings if (k := _pid(p))}
+    log.info("loaded %d catalog, %d pricing rows", len(cat_by_id), len(price_by_id))
 
-    log.info(
-        "loaded %d catalog rows, %d pricing rows",
-        len(cat_by_id),
-        len(price_by_id),
-    )
-
-    raw: list[RawSet] = []
-    for pid, catalog in cat_by_id.items():
-        pricing = price_by_id.get(pid, {})
-        history = _load_history(table, pid)
-        trends = _load_trends(table, pid)
-        community = _load_community(table, pid)
-        raw.append(
-            RawSet(
-                product_id=pid,
-                catalog=catalog,
-                pricing=pricing,
-                history=history,
-                trends=trends,
-                community=community,
-            )
-        )
-    return raw
+    merged: list[dict] = []
+    for pid, cat in cat_by_id.items():
+        rec = {**cat, **(price_by_id.get(pid, {}))}
+        rec["product_id"] = pid
+        merged.append(rec)
+    return merged
 
 
-def _load_history(table, pid: str) -> list[dict]:
-    items = _query_all(
-        table, KeyConditionExpression=Key("pk").eq(f"HISTORY#PRODUCT#{pid}")
-    )
-    out: list[dict] = []
-    for it in items:
-        sk = str(it.get("sk", ""))
-        if "#" in sk:
-            condition, date = sk.split("#", 1)
-            if condition != "new-sealed":
-                continue
-        else:
-            date = sk
-        price = it.get("price")
-        if price is None:
-            continue
-        out.append({"date": date, "price": price})
-    return out
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
 
-
-def _load_trends(table, pid: str) -> list[dict]:
-    items = _query_all(
-        table, KeyConditionExpression=Key("pk").eq(f"TRENDS#{pid}")
-    )
-    return [
-        {"month": str(it.get("sk", "")), "value": it.get("value")}
-        for it in items
-    ]
-
-
-def _load_community(table, pid: str) -> list[dict]:
-    items = _query_all(
-        table, KeyConditionExpression=Key("pk").eq(f"COMMUNITY#{pid}")
-    )
-    return [
-        {
-            "month": str(it.get("sk", "")),
-            "rating": it.get("rating"),
-            "reviewCount": it.get("reviewCount"),
-        }
-        for it in items
-    ]
-
-
-def _train_one(
-    df: pd.DataFrame, target_col: str, feature_cols: list[str]
-) -> tuple[xgb.XGBRegressor | None, dict | None]:
+def _train(df: pd.DataFrame, target_col: str) -> tuple[xgb.XGBRegressor | None, dict | None]:
     sub = df.dropna(subset=[target_col])
     if len(sub) < 4:
-        log.warning(
-            "skipping %s: only %d labeled rows (need ≥4 for train/test split)",
-            target_col,
-            len(sub),
-        )
+        log.warning("Skipping %s: only %d labeled rows (need ≥4)", target_col, len(sub))
         return None, None
-    X = sub[feature_cols].astype(float).values
+
+    feat_cols = feature_columns()
+    X = sub[feat_cols].astype(float).fillna(0).values
     y = sub[target_col].astype(float).values
+
     test_frac = 0.2 if len(sub) >= 10 else 1.0 / len(sub)
-    X_tr, X_te, y_tr, y_te = train_test_split(
-        X, y, test_size=test_frac, random_state=42
-    )
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=test_frac, random_state=42)
+
     model = xgb.XGBRegressor(
-        n_estimators=400,
+        n_estimators=100,
         max_depth=4,
-        learning_rate=0.05,
+        learning_rate=0.1,
         subsample=0.9,
         colsample_bytree=0.9,
         objective="reg:squarederror",
@@ -233,219 +157,147 @@ def _train_one(
         tree_method="hist",
     )
     model.fit(X_tr, y_tr)
+
     preds = model.predict(X_te)
     rmse = float(math.sqrt(mean_squared_error(y_te, preds)))
     try:
         r2 = float(r2_score(y_te, preds))
     except ValueError:
         r2 = float("nan")
-    metrics = {
-        "rmse": rmse,
-        "r2": r2,
-        "n_train": int(len(X_tr)),
-        "n_test": int(len(X_te)),
-    }
-    log.info(
-        "%s: rmse=%.3f r2=%.3f (train=%d test=%d)",
-        target_col, rmse, r2, len(X_tr), len(X_te),
-    )
-    return model, metrics
+
+    log.info("%s: rmse=%.4f r2=%.4f (train=%d test=%d)", target_col, rmse, r2, len(X_tr), len(X_te))
+    return model, {"rmse": rmse, "r2": r2}
 
 
-def _serialize_models(
-    models: dict[str, xgb.XGBRegressor], feature_cols: list[str]
-) -> bytes:
-    payload: dict = {"feature_cols": feature_cols, "models": {}}
-    for horizon, model in models.items():
-        buf = io.BytesIO()
-        pickle.dump(model, buf)
-        payload["models"][horizon] = base64.b64encode(buf.getvalue()).decode("ascii")
-    return json.dumps(payload).encode("utf-8")
+# ---------------------------------------------------------------------------
+# JSON-tree export (Plan B format)
+# ---------------------------------------------------------------------------
 
+def _export_model_json(model: xgb.XGBRegressor, horizon: str) -> dict:
+    """Serialise an XGBRegressor to the ForecastModel JSON format.
 
-def _chunk(data_b64: str, size: int) -> list[str]:
-    return [data_b64[i : i + size] for i in range(0, len(data_b64), size)]
+    The tree dump is obtained from get_booster().get_dump(dump_format='json'),
+    which emits the exact XGBoostTree node shape consumed by lego-ml-scoring.ts.
+    """
+    booster = model.get_booster()
+    raw_dump = booster.get_dump(dump_format="json", with_stats=False)
+    trees = [json.loads(t) for t in raw_dump]
 
+    # XGBoost base_score from booster config
+    cfg = json.loads(booster.save_config())
+    try:
+        base_score = float(cfg["learner"]["learner_model_param"]["base_score"])
+    except (KeyError, ValueError):
+        base_score = 0.5
 
-def _coerce_metrics(metrics: dict[str, dict]) -> dict:
-    out: dict[str, dict] = {}
-    for k, v in metrics.items():
-        if not v:
-            continue
-        row: dict = {}
-        for mk, mv in v.items():
-            if isinstance(mv, float):
-                if math.isnan(mv) or math.isinf(mv):
-                    row[mk] = None
-                else:
-                    row[mk] = Decimal(str(round(mv, 6)))
-            else:
-                row[mk] = mv
-        out[k] = row
-    return out
-
-
-def publish_models(
-    table,
-    models: dict[str, xgb.XGBRegressor],
-    metrics: dict[str, dict],
-    sample_count: int,
-    feature_cols: list[str],
-) -> tuple[str, int]:
+    feat_cols = feature_columns()
     version = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    blob = _serialize_models(models, feature_cols)
-    blob_b64 = base64.b64encode(blob).decode("ascii")
-    chunks = _chunk(blob_b64, CHUNK_BYTES)
-    total = len(chunks)
-    log.info(
-        "publishing model bundle: %d bytes raw, %d b64, %d chunk(s)",
-        len(blob), len(blob_b64), total,
-    )
-    existing = _query_all(
-        table,
-        KeyConditionExpression=Key("pk").eq(MODEL_PK) & Key("sk").begins_with("CHUNK#"),
-    )
-    for old in existing:
-        table.delete_item(Key={"pk": MODEL_PK, "sk": old["sk"]})
 
-    for i, data in enumerate(chunks):
-        table.put_item(
-            Item={
-                "pk": MODEL_PK,
-                "sk": f"CHUNK#{i}",
-                "n": i,
-                "total": total,
-                "data": data,
-                "version": version,
-            }
-        )
-    table.put_item(
-        Item={
-            "pk": MODEL_PK,
-            "sk": "MANIFEST",
-            "version": version,
-            "totalChunks": total,
-            "metrics": _coerce_metrics(metrics),
-            "trainedAt": version,
-            "sampleCount": sample_count,
-        }
-    )
-    return version, total
-
-
-def write_limitations(table, reason: str, stats: dict | None = None) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
-    iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    item: dict = {
-        "pk": "META",
-        "sk": f"LIMITATIONS#{ts}",
-        "script": "lego-ml-train",
-        "reason": reason,
-        "createdAt": iso,
+    return {
+        "featureNames": feat_cols,
+        "baseScore": base_score,
+        "trees": trees,
+        "horizon": horizon,
+        "version": version,
+        "trainedAt": version,
     }
-    if stats:
-        item["stats"] = {
-            k: Decimal(str(v))
-            for k, v in stats.items()
-            if isinstance(v, (int, float))
-        }
-    table.put_item(Item=item)
-    log.warning("wrote META#%s: %s", item["sk"], reason)
-    return item["sk"]
 
 
-def write_sync_metadata(table, samples: int, version: str | None) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
-    iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    item: dict = {
-        "pk": "META",
-        "sk": f"SYNC_METADATA#{ts}",
-        "script": "lego-ml-train",
-        "samples_trained": samples,
-        "createdAt": iso,
-    }
-    if version:
-        item["model_version"] = version
-    table.put_item(Item=item)
-    log.info("wrote META#%s", item["sk"])
-    return item["sk"]
-
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def main() -> int:
-    log.info(
-        "lego-ml training pipeline starting (table=%s region=%s)",
-        TABLE_NAME, REGION,
+    parser = argparse.ArgumentParser(description="Train LEGO XGBoost JSON-tree forecast models")
+    parser.add_argument(
+        "--horizon",
+        choices=HORIZONS + ["all"],
+        default="all",
+        help="Which horizon to train (default: all)",
     )
-    table = _ddb_table()
-    raw_sets = load_raw_sets(table)
-    log.info("loaded %d raw sets", len(raw_sets))
-
-    if not raw_sets:
-        write_limitations(
-            table,
-            "No CATALOG rows in DynamoDB — nothing to train on. "
-            "Run npm run sync:pricecharting first.",
-        )
-        write_sync_metadata(table, 0, None)
-        return 0
-
-    df, stats = build_dataset(raw_sets)
-    log.info("feature stats: %s", stats)
-
-    feature_cols = feature_columns()
-
-    has_any_target = any(
-        stats.get(f"with_target_{h}yr", 0) > 0 for h in HORIZONS
+    parser.add_argument(
+        "--output",
+        default="models/",
+        help="Output path: directory (for all) or .json file (for single horizon)",
     )
-    if df.empty or not has_any_target:
-        reason = (
-            f"Insufficient history for forward-horizon training "
-            f"(sets={stats['total_sets']}, "
-            f"dropped_for_history={stats['dropped_insufficient_history']}, "
-            f"labeled_rows_1yr=0). HISTORY#PRODUCT#* rows are sparse — "
-            f"awaiting back-population from PriceCharting CSV before models "
-            f"can be trained."
-        )
-        write_limitations(table, reason, stats)
-        write_sync_metadata(table, 0, None)
-        log.warning("EXIT 0 — LIMITATIONS written; no labels available.")
-        return 0
-
-    models: dict[str, xgb.XGBRegressor] = {}
-    metrics: dict[str, dict] = {}
-    for h in HORIZONS:
-        key = f"{h}yr"
-        model, m = _train_one(df, f"target_{h}yr", feature_cols)
-        if model is not None and m is not None:
-            models[key] = model
-            metrics[key] = m
-
-    if not models:
-        reason = (
-            f"Have {stats['rows']} feature rows but <4 labeled samples per "
-            f"horizon — cannot fit any XGBoost regressor. Training deferred."
-        )
-        write_limitations(table, reason, stats)
-        write_sync_metadata(table, stats["rows"], None)
-        log.warning("EXIT 0 — LIMITATIONS written; no horizon had enough labels.")
-        return 0
-
-    sample_count = int(stats["rows"])
-    version, total = publish_models(
-        table, models, metrics, sample_count, feature_cols
+    parser.add_argument(
+        "--upload-to-ddb",
+        action="store_true",
+        help="After training, upload JSON models to DynamoDB",
     )
-    write_sync_metadata(table, sample_count, version)
-
-    log.info("==== TRAIN COMPLETE ====")
-    log.info(
-        "model_version=%s chunks=%d samples=%d",
-        version, total, sample_count,
+    parser.add_argument(
+        "--use-ddb",
+        action="store_true",
+        help="Load training data from DynamoDB (default: use DDB if configured)",
     )
-    for k, v in metrics.items():
-        log.info(
-            "  %s: rmse=%.3f r2=%.3f n_train=%d n_test=%d",
-            k, v["rmse"], v["r2"], v["n_train"], v["n_test"],
+    args = parser.parse_args()
+
+    horizons = HORIZONS if args.horizon == "all" else [args.horizon]
+    output = Path(args.output)
+
+    # ---- Load & feature-engineer -----------------------------------------
+    if args.use_ddb or args.upload_to_ddb:
+        log.info("Loading training data from DynamoDB table=%s", TABLE_NAME)
+        try:
+            table = _table()
+            records = _load_records(table)
+        except Exception as exc:
+            log.error("DDB load failed: %s", exc)
+            return 1
+    else:
+        log.warning(
+            "No --use-ddb flag; using empty record list. "
+            "Pass --use-ddb to load from DynamoDB."
         )
+        records = []
+
+    if not records:
+        log.warning("No records loaded; training on empty dataset (synthetic targets only).")
+
+    df = build_feature_matrix(records)
+    log.info("Feature matrix: %d rows", len(df))
+
+    # ---- Train per horizon -----------------------------------------------
+    results = []
+    for hz in horizons:
+        target_col = f"target_{hz}"
+        model, metrics = _train(df, target_col) if not df.empty else (None, None)
+
+        if model is None:
+            log.warning(
+                "No trained model for %s (insufficient labeled rows). "
+                "Bundled placeholder will be used at runtime.",
+                hz,
+            )
+            continue
+
+        model_json = _export_model_json(model, hz)
+
+        # ---- Write to disk -----------------------------------------------
+        if output.suffix == ".json":
+            out_path = output
+        else:
+            output.mkdir(parents=True, exist_ok=True)
+            out_path = output / f"lego-forecast-{hz}.json"
+
+        out_path.write_text(json.dumps(model_json, indent=2))
+        log.info("Wrote model to %s", out_path)
+
+        # ---- Upload to DDB -----------------------------------------------
+        if args.upload_to_ddb:
+            result = upload_to_ddb(model_json, hz)
+            log.info("DDB upload: %s", result)
+
+        results.append({"horizon": hz, "metrics": metrics, "path": str(out_path)})
+
+    if results:
+        log.info("==== TRAINING COMPLETE ====")
+        for r in results:
+            m = r["metrics"] or {}
+            log.info("  %s: rmse=%.4f r2=%.4f  → %s", r["horizon"], m.get("rmse", 0), m.get("r2", 0), r["path"])
+    else:
+        log.warning("No models trained (likely insufficient labeled data).")
+
     return 0
 
 

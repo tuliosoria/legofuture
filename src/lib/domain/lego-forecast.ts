@@ -15,6 +15,8 @@ import {
   getModelConfidence,
   type ModelManifestSummary,
 } from "@/lib/ml/lego-forecast-models";
+import { loadForecastModel } from "@/lib/db/lego-forecast-models";
+import { scoreModel } from "@/lib/domain/lego-ml-scoring";
 
 export const SP500_ANNUAL_RETURN = 0.105;
 
@@ -459,4 +461,212 @@ export function getConfidenceBg(confidence: Confidence): string {
     case "low":
       return "bg-zinc-500/20 text-zinc-400";
   }
+}
+
+// ---------------------------------------------------------------------------
+// ML-scored forecast (Plan B)
+//
+// Builds the same feature vector the Python training pipeline produces,
+// scores via XGBoost tree inference, and returns a Forecast-compatible shape.
+//
+// DO NOT replace computeForecast with this yet — use as a parallel signal
+// until a future PR validates accuracy. Route via Plan C / a future PR.
+// ---------------------------------------------------------------------------
+
+const THEMES_INDEX: Record<string, number> = {
+  Technic: 0,
+  "Star Wars": 1,
+  Icons: 2,
+  "Creator Expert": 3,
+  Ideas: 4,
+  City: 5,
+  Architecture: 6,
+  Botanical: 7,
+  Seasonal: 8,
+  "Modular Buildings": 9,
+  "Harry Potter": 10,
+  Marvel: 11,
+  DC: 12,
+  Minecraft: 13,
+  Friends: 14,
+  Disney: 15,
+  "Speed Champions": 16,
+  Ninjago: 17,
+  GWP: 18,
+  Other: 19,
+};
+
+const ERAS_INDEX: Record<string, number> = {
+  Classic: 0,
+  Modern: 1,
+  Licensed: 2,
+  Premium: 3,
+};
+
+const THEMES_LIST = [
+  "Technic","Star Wars","Icons","Creator Expert","Ideas","City","Architecture",
+  "Botanical","Seasonal","Modular Buildings","Harry Potter","Marvel","DC",
+  "Minecraft","Friends","Disney","Speed Champions","Ninjago","GWP","Other",
+];
+const ERAS_LIST = ["Classic", "Modern", "Licensed", "Premium"];
+
+function buildMlFeatures(
+  product: LegoSet,
+  pricing: ProductPricing | null
+): Record<string, number> {
+  const now = new Date();
+  const releaseDate = new Date(product.releaseYear, 0, 1);
+  const monthsSinceRelease =
+    (now.getFullYear() - releaseDate.getFullYear()) * 12 +
+    (now.getMonth() - releaseDate.getMonth());
+
+  const retirementYear = product.retirementYear ?? null;
+  const monthsToRetirement = retirementYear
+    ? (retirementYear - now.getFullYear()) * 12 - now.getMonth()
+    : 0;
+
+  const currentPrice =
+    pricing?.newPrice ?? pricing?.cibPrice ?? pricing?.loosePrice ?? product.originalMsrp ?? 0;
+  const loosePrice = pricing?.loosePrice ?? null;
+  const cibPrice = pricing?.cibPrice ?? null;
+  const piecesLog = product.pieceCount > 0 ? Math.log(product.pieceCount) : 0;
+  const currentPriceLog = currentPrice > 0 ? Math.log(currentPrice) : 0;
+  const era: LegoEra = product.era ?? eraFor(product.theme);
+
+  const features: Record<string, number> = {
+    months_since_release: Math.max(0, monthsSinceRelease),
+    months_to_retirement: monthsToRetirement,
+    pieces_log: piecesLog,
+    current_price_log: currentPriceLog,
+    trends_avg_3mo: 0,
+    trends_slope_6mo: 0,
+    community_rating: 0,
+    community_review_count: 0,
+    retired_flag: product.retired ? 1 : 0,
+    retiring_soon_flag: product.retiringSoon ? 1 : 0,
+    gwp_flag: product.originalMsrp === 0 ? 1 : 0,
+    price_loose_to_new_ratio:
+      loosePrice && currentPrice > 0 ? loosePrice / currentPrice : 0,
+    price_cib_to_new_ratio:
+      cibPrice && currentPrice > 0 ? cibPrice / currentPrice : 0,
+  };
+
+  for (const e of ERAS_LIST) {
+    features[`era_${e}`] = e === era ? 1 : 0;
+  }
+  const themeKey = product.theme in THEMES_INDEX ? product.theme : "Other";
+  for (const t of THEMES_LIST) {
+    features[`theme_${t}`] = t === themeKey ? 1 : 0;
+  }
+
+  return features;
+}
+
+function mlSignalFromCagr(cagr: number): "Buy" | "Hold" | "Sell" {
+  const net = cagr - 0.02;
+  if (net >= 0.08) return "Buy";
+  if (net >= 0.02) return "Hold";
+  return "Sell";
+}
+
+/**
+ * ML-backed forecast using loaded XGBoost tree models.
+ *
+ * Uses Plan B infrastructure (lego-forecast-models + lego-ml-scoring).
+ * The existing `computeForecast` is unchanged — this runs in parallel until
+ * accuracy is validated.
+ *
+ * Model outputs are log-returns (forward_log_return target), so:
+ *   projectedPrice = currentPrice * exp(scoreModel(model, features))
+ */
+export async function computeMlForecast(
+  product: LegoSet,
+  pricing: ProductPricing | null
+): Promise<Forecast> {
+  const id = product.id;
+  const currentPrice =
+    pricing?.newPrice ?? pricing?.cibPrice ?? pricing?.loosePrice ?? product.originalMsrp ?? 0;
+
+  const features = buildMlFeatures(product, pricing);
+
+  const [model1y, model3y, model5y] = await Promise.all([
+    loadForecastModel("1y"),
+    loadForecastModel("3y"),
+    loadForecastModel("5y"),
+  ]);
+
+  const score1y = scoreModel(model1y, features);
+  const score3y = scoreModel(model3y, features);
+  const score5y = scoreModel(model5y, features);
+
+  const price1y = currentPrice > 0 ? currentPrice * Math.exp(score1y) : 0;
+  const price3y = currentPrice > 0 ? currentPrice * Math.exp(score3y) : 0;
+  const price5y = currentPrice > 0 ? currentPrice * Math.exp(score5y) : 0;
+
+  const cagr5y =
+    currentPrice > 0 && price5y > 0
+      ? Math.pow(price5y / currentPrice, 1 / 5) - 1
+      : 0;
+
+  const signal = mlSignalFromCagr(cagr5y);
+
+  // Use the heuristic confidence derivation — ML confidence improves once
+  // real training data flows in.
+  const confidence: Confidence = deriveConfidence({
+    ageYears: Math.max(0, new Date().getFullYear() - product.releaseYear),
+    salesVolume: pricing?.salesVolume ? Number(pricing.salesVolume) : null,
+    retired: product.retired,
+    msrpRatio:
+      product.originalMsrp > 0 && currentPrice > 0
+        ? currentPrice / product.originalMsrp
+        : null,
+  });
+
+  const buildScenario = (
+    projectedValue: number,
+    horizonYears: number
+  ): import("@/lib/types/lego").ScenarioOutlook => {
+    const dollarGain = projectedValue - currentPrice;
+    const roiPercent = currentPrice > 0 ? (dollarGain / currentPrice) * 100 : 0;
+    const annualRate =
+      currentPrice > 0 && projectedValue > 0
+        ? Math.pow(projectedValue / currentPrice, 1 / horizonYears) - 1
+        : 0;
+    const annualSignal =
+      annualRate - 0.02 >= 0.08
+        ? "Buy"
+        : annualRate - 0.02 >= 0.02
+          ? "Hold"
+          : "Sell";
+    return {
+      projectedValue: Math.round(projectedValue),
+      dollarGain: Math.round(dollarGain),
+      roiPercent: Math.round(roiPercent * 10) / 10,
+      annualRate,
+      signal: annualSignal,
+    };
+  };
+
+  const scenarios: Record<Scenario, import("@/lib/types/lego").ScenarioOutlook> = {
+    pessimist: buildScenario(Math.min(price1y, price5y * 0.7), 5),
+    moderate: buildScenario(price5y, 5),
+    optimist: buildScenario(price5y * 1.3, 5),
+  };
+
+  const moderate = scenarios.moderate;
+
+  return {
+    id,
+    currentPrice,
+    projectedValue: moderate.projectedValue,
+    dollarGain: moderate.dollarGain,
+    roiPercent: moderate.roiPercent,
+    annualRate: moderate.annualRate,
+    signal,
+    confidence,
+    status: "ready",
+    statusMessage: null,
+    predictionSpreadPercent: 25,
+    scenarios,
+  };
 }

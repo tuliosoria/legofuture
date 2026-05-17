@@ -1,55 +1,99 @@
-# lego-ml — XGBoost training pipeline
+# lego-ml — XGBoost Training Pipeline
 
-Trains 1-year, 3-year and 5-year sealed-LEGO price forecast models from the
-DynamoDB `legofuture-cache` table, serializes them with pickle + base64, and
-publishes the bundle to DynamoDB as `MODEL#lego-ml#CHUNK#<n>` rows + a
-single `MODEL#lego-ml#MANIFEST` row.
+Trains LEGO set price forecast models from DynamoDB price history and exports
+them as **XGBoost JSON-tree artifacts** consumed by the TypeScript inference
+layer (`src/lib/db/lego-forecast-models.ts` + `src/lib/domain/lego-ml-scoring.ts`).
 
-## What it reads
+---
 
-| DDB key                                 | Use                                    |
-| --------------------------------------- | -------------------------------------- |
-| `pk=CATALOG, sk=PRODUCT#<id>`           | set metadata (theme, pieces, era, …)   |
-| `pk=PRICING, sk=PRODUCT#<id>`           | current loose / CIB / new prices       |
-| `pk=HISTORY#PRODUCT#<id>`               | monthly price history (targets)        |
-| `pk=TRENDS#<id>, sk=<YYYYMM>`           | Google Trends interest-over-time       |
-| `pk=COMMUNITY#<id>, sk=<YYYYMM>`        | community ratings + review counts      |
+## ⚠️ Current Data State
 
-Falls back to `pk=CATALOG#PRODUCT#<id>` / `pk=PRICING#PRODUCT#<id>` if the
-writers migrate to that layout.
+**Training data is sparse (71 sets with PC current prices, no historical depth).**
 
-## What it writes
+The bundled placeholder JSONs at `src/lib/db/bundled/lego-forecast-{1y,3y,5y}.json`
+already encode a ~10% annual growth assumption so the system is fully functional at
+runtime. Real predictive power requires BrickLink/Brickset/eBay syncs to run first
+and populate `HISTORY#PRODUCT#*` rows with multi-year price sequences.
 
-| DDB key                                       | Body                              |
-| --------------------------------------------- | --------------------------------- |
-| `pk=MODEL#lego-ml, sk=CHUNK#<n>`              | `{n, total, data, version}`       |
-| `pk=MODEL#lego-ml, sk=MANIFEST`               | `{version, totalChunks, metrics, trainedAt, sampleCount}` |
-| `pk=META, sk=SYNC_METADATA#<ts>`              | run telemetry                     |
-| `pk=META, sk=LIMITATIONS#<ts>` (when bailing) | reason + stats                    |
+---
 
-Chunks are ≤ 350 KB each (well under DDB's 400 KB item cap).
+## Architecture
 
-## Features (spec §7)
+### Plan B (this pipeline)
 
-`months_since_release`, `months_to_retirement`, `era_*` one-hot,
-`theme_*` one-hot, `pieces_log`, `current_price_log`, `trends_avg_3mo`,
-`trends_slope_6mo`, `community_rating`, `community_review_count`,
-`retired_flag`, `retiring_soon_flag`, `gwp_flag` (always 0 — denylisted),
-`price_loose_to_new_ratio`, `price_cib_to_new_ratio`.
+```
+DynamoDB CATALOG/PRICING rows
+        │
+extract_features.py::build_feature_matrix()
+        │
+train.py::XGBRegressor.fit()
+        │
+XGBoost JSON tree dump (get_dump(dump_format='json'))
+        │
+upload_model.py::upload_to_ddb()
+        │
+DynamoDB MODEL#FORECAST#<horizon> / FORECAST#<horizon>#chunk#NNNN
+        │
+TypeScript: loadForecastModel() → scoreModel() → projectedPrice
+```
 
-Rows with `<3` history points (or no history anchor that is ≥1 yr old) are
-dropped; the count is logged.
+### v1 (legacy, pickle)
 
-## Targets
+`train_v1_pickle.py` / `retrain_v1_pickle.py` — kept for reference.
+These write pickle bundles to `MODEL#lego-ml` and are read by
+`src/lib/ml/lego-forecast-models.ts`. The two systems coexist; Plan B
+supersedes Plan A for inference once real models are trained.
 
-Look-ahead price at anchor + 1 / 3 / 5 years (±90 day window), pulled from
-the same history series. Multiple anchors per set ⇒ multiple labeled rows.
+---
 
-## Sparse-data behavior
+## Files
 
-If history is empty for every set (current state at launch), the script
-writes a `META#LIMITATIONS#<ts>` row explaining why and exits 0. **No
-synthetic data is ever generated.**
+| File | Purpose |
+|------|---------|
+| `train.py` | Main entry — `--horizon {1y,3y,5y,all}`, `--output`, `--upload-to-ddb` |
+| `extract_features.py` | `build_feature_matrix(records) → pd.DataFrame` (pure, testable) |
+| `upload_model.py` | `upload_to_ddb(model_json, horizon, table_name)` — chunks JSON into ≤350 KB DDB items |
+| `features.py` | v1 feature engineering (used by train_v1_pickle.py) |
+| `train_v1_pickle.py` | v1 pickle-bundle training (legacy) |
+| `retrain_v1_pickle.py` | v1 incremental retraining (legacy) |
+| `tests/test_extract_features.py` | pytest happy-path tests for extract_features.py |
+
+---
+
+## DynamoDB Keys (Plan B)
+
+| Key | Description |
+|-----|-------------|
+| `pk=MODEL#FORECAST#1y`, `sk=FORECAST#1y#chunk#NNNN` | 1yr model chunks |
+| `pk=MODEL#FORECAST#3y`, `sk=FORECAST#3y#chunk#NNNN` | 3yr model chunks |
+| `pk=MODEL#FORECAST#5y`, `sk=FORECAST#5y#chunk#NNNN` | 5yr model chunks |
+
+The TypeScript loader queries `begins_with(sk, "FORECAST#<horizon>#chunk#")`,
+sorts by `chunkIndex`, joins `chunkData` strings, and parses as JSON.
+Chunks are ≤350 KB (well under DDB's 400 KB item cap).
+
+---
+
+## Features
+
+`months_since_release`, `months_to_retirement`, `pieces_log`, `current_price_log`,
+`trends_avg_3mo`, `trends_slope_6mo`, `community_rating`, `community_review_count`,
+`retired_flag`, `retiring_soon_flag`, `gwp_flag`,
+`price_loose_to_new_ratio`, `price_cib_to_new_ratio`,
+`era_{Classic|Modern|Licensed|Premium}`,
+`theme_{Technic|Star Wars|Icons|…|Other}`
+
+---
+
+## Targets (current — synthetic)
+
+`target_Ny = ln(1.10^N)` = log-return for 10% compounded annual growth.
+
+These ship a *functional* pipeline; real predictive power requires historical
+price data from BrickLink/Brickset/eBay syncs. Once `HISTORY#PRODUCT#*` rows
+are populated with multi-year sequences, re-run training to get data-driven targets.
+
+---
 
 ## Setup
 
@@ -60,23 +104,45 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Environment (read from repo root `.env.local` via `python-dotenv`):
+Environment (auto-loaded from repo root `.env.local` via `python-dotenv`):
 
-- `DYNAMODB_TABLE` — defaults to `legofuture-cache`
-- `AWS_REGION`     — defaults to `us-east-1`
-- AWS credentials via the default boto3 chain.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DYNAMODB_TABLE` | `legofuture-cache` | DynamoDB table |
+| `AWS_REGION` | `us-east-1` | AWS region |
+| `AWS_PROFILE` | _(default chain)_ | Optional named credentials profile |
+
+---
 
 ## Run
 
 ```bash
-npm run ml:train
-# or directly:
-python3 lego-ml/train.py
+# Train all horizons and write JSON to models/
+python lego-ml/train.py --horizon all --output models/
+
+# Train 5yr model and upload to DDB
+python lego-ml/train.py --horizon 5y --output models/ --use-ddb --upload-to-ddb
+
+# Or via npm
+npm run train:lego
 ```
 
-## Verify
+---
+
+## Test
 
 ```bash
-aws dynamodb get-item --table-name legofuture-cache \
-  --key '{"pk":{"S":"MODEL#lego-ml"},"sk":{"S":"MANIFEST"}}'
+cd lego-ml
+python -m pytest tests/test_extract_features.py -v
+```
+
+---
+
+## Verify DDB upload
+
+```bash
+aws dynamodb query \
+  --table-name legofuture-cache \
+  --key-condition-expression "pk = :pk" \
+  --expression-attribute-values '{":pk":{"S":"MODEL#FORECAST#5y"}}'
 ```
