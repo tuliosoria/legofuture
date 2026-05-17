@@ -27,9 +27,13 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) return { title: "Not Found | LegoFuture" };
+  if (!product) return { title: "Not Found" };
+  // The root layout already appends " · LegoFuture" via the title
+  // template, so we only need the page-specific title here. Include the
+  // theme so search snippets and browser tabs disambiguate sets that
+  // share a name across themes (e.g. multiple Millennium Falcon UCS).
   return {
-    title: `${product.name} Forecast | LegoFuture`,
+    title: `${product.name} (${product.theme}) Forecast`,
     description: `5-year price forecast for LEGO ${product.name} (${product.setNumber}). Scenarios, key drivers, and BrickLink marketplace link.`,
   };
 }

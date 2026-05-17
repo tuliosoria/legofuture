@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { unstable_cache } from "next/cache";
 import { getDynamo, getTableName } from "./dynamo";
 
@@ -82,31 +82,83 @@ async function fetchLatestSyncMetadataUncached(): Promise<SyncMetadataSummary | 
       ExclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
     } while (ExclusiveStartKey);
 
-    if (rows.length === 0) return null;
-
     const sorted = rows
       .map((r) => ({ row: r, ts: rowTimestamp(r) }))
       .filter((r) => r.ts)
       .sort((a, b) => b.ts.localeCompare(a.ts));
 
-    if (sorted.length === 0) return null;
-
-    const preferred =
-      sorted.find(({ row }) => isPricechartingRow(row) && rowTotal(row) !== null) ??
-      sorted.find(({ row }) => rowTotal(row) !== null);
-
-    if (!preferred) return null;
-    const total = rowTotal(preferred.row);
-    if (total === null) return null;
-
-    return {
-      total,
-      syncedAt: preferred.ts,
-      source: rowSource(preferred.row),
+    // Prefer the most recent pricecharting catalog sync with a usable
+    // (non-zero) total. Some early sync rows recorded a 0-total
+    // "limitations" snapshot that we don't want to surface as the
+    // tracked-set count. Fall back to the most recent row with a
+    // non-zero total of any source, then to a counted CATALOG scan.
+    const hasUsableTotal = (row: Row) => {
+      const t = rowTotal(row);
+      return t !== null && t > 0;
     };
+    const preferred =
+      sorted.find(({ row }) => isPricechartingRow(row) && hasUsableTotal(row)) ??
+      sorted.find(({ row }) => hasUsableTotal(row));
+
+    if (preferred) {
+      const total = rowTotal(preferred.row);
+      if (total !== null && total > 0) {
+        return {
+          total,
+          syncedAt: preferred.ts,
+          source: rowSource(preferred.row),
+        };
+      }
+    }
+
+    // Last-resort fallback: count CATALOG#PRODUCT#* rows directly so
+    // the home page never shows "0 LEGO sets tracked" when the catalog
+    // is actually populated.
+    const catalogTotal = await countCatalogRows(client, table);
+    if (catalogTotal > 0) {
+      // Use the most recent sync_metadata row's timestamp if available so
+      // the "last synced" label still reflects a real event.
+      const latestTs = sorted[0]?.ts ?? new Date().toISOString();
+      return {
+        total: catalogTotal,
+        syncedAt: latestTs,
+        source: "catalog-row-count",
+      };
+    }
+
+    return null;
   } catch (err) {
     console.warn("getLatestSyncMetadata error:", err);
     return null;
+  }
+}
+
+async function countCatalogRows(
+  client: NonNullable<ReturnType<typeof getDynamo>>,
+  table: string
+): Promise<number> {
+  try {
+    let total = 0;
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const res = await client.send(
+        new QueryCommand({
+          TableName: table,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :s)",
+          ExpressionAttributeValues: {
+            ":pk": "CATALOG",
+            ":s": "PRODUCT#",
+          },
+          Select: "COUNT",
+          ExclusiveStartKey,
+        })
+      );
+      total += res.Count ?? 0;
+      ExclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (ExclusiveStartKey);
+    return total;
+  } catch {
+    return 0;
   }
 }
 

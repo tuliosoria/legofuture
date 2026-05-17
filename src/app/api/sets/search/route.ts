@@ -51,7 +51,19 @@ function readThemes(searchParams: URLSearchParams): LegoTheme[] {
     .flatMap((v) => v.split(","))
     .map((v) => v.trim())
     .filter(Boolean);
-  const themes = raw.map(coerceTheme);
+  // coerceTheme falls back to "Other" for anything unknown. We only want
+  // an explicit "other" token to filter the Other bucket — silently
+  // coercing typos like "Nonexistent" into Other would mis-filter the
+  // catalog. Drop tokens whose coerced value differs from the input
+  // (case-insensitive, and ignoring slug vs name differences).
+  const themes = raw
+    .map((token) => ({ token, coerced: coerceTheme(token) }))
+    .filter(({ token, coerced }) => {
+      const t = token.toLowerCase();
+      if (coerced !== "Other") return true;
+      return t === "other";
+    })
+    .map(({ coerced }) => coerced);
   return Array.from(new Set(themes));
 }
 

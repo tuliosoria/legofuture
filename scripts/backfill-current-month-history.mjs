@@ -30,7 +30,12 @@ const ddb = DynamoDBDocumentClient.from(
 );
 
 function monthlyHistorySk(date = new Date()) {
-  return date.toISOString().slice(0, 7);
+  // History rows from scrape-pricecharting-history use sk=`<condition>#<YYYY-MM-DD>`,
+  // and loadHistory() filters with begins_with(sk, "<condition>#"). Snapshot the
+  // current month as the first-of-month date in the same shape so it actually
+  // surfaces in the chart.
+  const ym = date.toISOString().slice(0, 7);
+  return { ym, date: `${ym}-01` };
 }
 
 async function* scanPricing() {
@@ -56,10 +61,16 @@ async function* scanPricing() {
 
 async function main() {
   const startedAt = new Date().toISOString();
-  const monthSk = monthlyHistorySk();
+  const { ym: monthSk, date: snapshotDate } = monthlyHistorySk();
   let scanned = 0;
   let written = 0;
   const failures = [];
+
+  const CONDITIONS = [
+    { condition: "loose", field: "loosePrice" },
+    { condition: "complete", field: "cibPrice" },
+    { condition: "new-sealed", field: "newPrice" },
+  ];
 
   for await (const row of scanPricing()) {
     scanned += 1;
@@ -70,27 +81,30 @@ async function main() {
         ? row.sk.split("#").pop()
         : null);
     if (!id) continue;
-    try {
-      await ddb.send(
-        new PutCommand({
-          TableName: TABLE,
-          Item: {
-            pk: `HISTORY#PRODUCT#${id}`,
-            sk: monthSk,
-            id: String(id),
-            loose: row["loose-price"] ?? null,
-            cib: row["cib-price"] ?? null,
-            new: row["new-price"] ?? null,
-            source: "pricecharting-snapshot",
-            capturedAt: startedAt,
-          },
-        }),
-      );
-      written += 1;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[backfill-history] FAIL id=${id}: ${msg}`);
-      failures.push({ id: String(id), error: msg });
+    for (const { condition, field } of CONDITIONS) {
+      const raw = row[field];
+      const price = typeof raw === "number" ? raw : Number(raw);
+      if (!Number.isFinite(price) || price <= 0) continue;
+      try {
+        await ddb.send(
+          new PutCommand({
+            TableName: TABLE,
+            Item: {
+              pk: `HISTORY#PRODUCT#${id}`,
+              sk: `${condition}#${snapshotDate}`,
+              price,
+              condition,
+              source: "pricecharting-snapshot",
+              capturedAt: startedAt,
+            },
+          }),
+        );
+        written += 1;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[backfill-history] FAIL id=${id} ${condition}: ${msg}`);
+        failures.push({ id: String(id), condition, error: msg });
+      }
     }
   }
 
