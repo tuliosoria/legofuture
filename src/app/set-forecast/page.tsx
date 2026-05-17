@@ -14,6 +14,26 @@ export const metadata: Metadata = {
     "Browse price forecasts for LEGO sets. Filter by theme, retirement status, and investment signal.",
 };
 
+/**
+ * SSR cap for orphan sets. Prevents Lambda timeout when includeOrphans=true
+ * until GSI-based pagination is available (Plan C / TODO(GSI)).
+ * The real catalog total is resolved client-side via /api/sets/catalog.
+ * @deprecated Migrate to the paginated /api/sets/catalog endpoint.
+ */
+const SSR_ORPHAN_CAP = 200;
+
+/** Number of items to compute forecasts for server-side (fast first paint). */
+const SSR_FIRST_PAGE = 60;
+
+/** Fallback pricing when no PriceCharting data exists. */
+const EMPTY_PRICING = {
+  newPrice: null,
+  cibPrice: null,
+  loosePrice: null,
+  salesVolume: null,
+  lastFetched: "",
+} as const;
+
 export default async function SetForecastPage({
   searchParams,
 }: {
@@ -21,21 +41,21 @@ export default async function SetForecastPage({
 }) {
   const params = (await Promise.resolve(searchParams)) ?? {};
   const includeOrphans = params.includeOrphans === "1";
-  const catalog = await loadStoredCatalog({ includeOrphans });
 
-  const items = await Promise.all(
-    catalog.map(async (product) => {
+  // Load catalog — orphan scan capped to SSR_ORPHAN_CAP to prevent timeout.
+  // Client discovers the real total via /api/sets/catalog (Plan C).
+  const catalog = await loadStoredCatalog({
+    includeOrphans,
+    orphanCap: includeOrphans ? SSR_ORPHAN_CAP : undefined,
+  });
+
+  const initialTotal = catalog.length;
+  const firstPage = catalog.slice(0, SSR_FIRST_PAGE);
+
+  const initialItems = await Promise.all(
+    firstPage.map(async (product) => {
       const pricing = await getPricing(product);
-      const forecast = computeForecast(
-        product,
-        pricing ?? {
-          newPrice: product.originalMsrp ?? 0,
-          cibPrice: null,
-          loosePrice: null,
-          salesVolume: null,
-          lastFetched: "",
-        }
-      );
+      const forecast = computeForecast(product, pricing ?? EMPTY_PRICING);
       return { product, forecast };
     })
   );
@@ -58,7 +78,11 @@ export default async function SetForecastPage({
           </div>
         </div>
       </div>
-      <ForecastDashboard items={items} includeOrphans={includeOrphans} />
+      <ForecastDashboard
+        initialItems={initialItems}
+        initialTotal={initialTotal}
+        includeOrphans={includeOrphans}
+      />
     </main>
   );
 }

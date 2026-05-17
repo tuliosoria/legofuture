@@ -145,12 +145,23 @@ function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
   return set;
 }
 
-/** Hard cap on returned rows when includeOrphans=true. The full Rebrickable
- * catalog is ~27K; rendering all of them via SSR exceeds Lambda timeout +
- * payload limits. Real solution is server-side pagination (Plan C). */
-const ORPHAN_CAP = 500;
+/**
+ * The old hard cap (500) has been replaced with the `orphanCap` parameter.
+ * The /api/sets/catalog route omits the cap and handles pagination server-side.
+ * Legacy SSR callers (set-forecast/page.tsx) pass SSR_ORPHAN_CAP=200 to prevent
+ * Lambda timeouts until GSI-based pagination is available (Plan C / TODO(GSI)).
+ * @deprecated Pass `orphanCap` explicitly; prefer /api/sets/catalog for pagination.
+ */
 
-export async function loadStoredCatalog(opts?: { includeOrphans?: boolean }): Promise<LegoSet[]> {
+export async function loadStoredCatalog(opts?: {
+  includeOrphans?: boolean;
+  /**
+   * Maximum orphan (Rebrickable-only) rows to return. Defaults to no cap.
+   * Pass a conservative value (e.g. 200) in SSR contexts to avoid timeouts.
+   * @deprecated Prefer /api/sets/catalog (Plan C) for paginated access.
+   */
+  orphanCap?: number;
+}): Promise<LegoSet[]> {
   const ddb = getDynamo();
   const table = getTableName();
   if (!ddb || !table) {
@@ -184,10 +195,12 @@ export async function loadStoredCatalog(opts?: { includeOrphans?: boolean }): Pr
       all.push(applyOverridesAndComputed(normalized));
     }
     ExclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
-    if (includeOrphans && all.length >= ORPHAN_CAP) break;
+    const cap = opts?.orphanCap;
+    if (includeOrphans && cap !== undefined && all.length >= cap) break;
   } while (ExclusiveStartKey);
 
-  if (includeOrphans) return all.slice(0, ORPHAN_CAP);
+  const cap = opts?.orphanCap;
+  if (includeOrphans) return cap !== undefined ? all.slice(0, cap) : all;
   return all.filter(isEligibleForDashboard);
 }
 
