@@ -83,26 +83,111 @@ function stripKeys(item: Record<string, unknown>): LegoSet {
   return rest as unknown as LegoSet;
 }
 
+function deriveSlug(name: string | undefined, id: string): string {
+  const base = (name ?? id).toString().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base ? `${base}-${id}` : id;
+}
+
+/**
+ * Normalize a raw DDB row from any sync source (PriceCharting, Rebrickable,
+ * Brickset, etc.) into a `LegoSet`. Returns null when row lacks the
+ * minimum fields to render.
+ */
+function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
+  const id = (item.id as string | undefined) ?? undefined;
+  if (!id) return null;
+
+  // Rebrickable shape: { id, name, year, themeName, pieceCount, imageUrl }
+  // PriceCharting shape: { id, productName, consoleName, releaseDate, raw }
+  const pcRaw = (item.raw as Record<string, unknown> | undefined) ?? undefined;
+  const consoleName = (item.consoleName as string | undefined)
+    ?? (pcRaw?.["console-name"] as string | undefined);
+
+  const name = (item.name as string | undefined)
+    ?? (item.productName as string | undefined)
+    ?? (pcRaw?.["product-name"] as string | undefined)
+    ?? `Set ${id}`;
+
+  const setNumber = (item.setNumber as string | undefined)
+    ?? id;
+
+  const releaseDateStr = (item.releaseDate as string | undefined)
+    ?? (pcRaw?.["release-date"] as string | undefined);
+  const releaseYear = (item.releaseYear as number | undefined)
+    ?? (typeof item.year === "number" ? (item.year as number) : undefined)
+    ?? (releaseDateStr ? Number(releaseDateStr.slice(0, 4)) : undefined)
+    ?? 0;
+
+  const themeRaw = (item.theme as string | undefined)
+    ?? (item.themeName as string | undefined)
+    ?? (consoleName ? consoleName.replace(/^LEGO\s+/i, "") : undefined)
+    ?? "Other";
+
+  const set: LegoSet = {
+    id,
+    setNumber,
+    name,
+    theme: themeRaw as LegoSet["theme"],
+    releaseYear,
+    retired: (item.retired as boolean | undefined) ?? false,
+    retirementYear: (item.retirementYear as number | null | undefined) ?? null,
+    pieceCount: (item.pieceCount as number | undefined) ?? 0,
+    minifigCount: (item.minifigCount as number | undefined) ?? 0,
+    originalMsrp: (item.originalMsrp as number | undefined) ?? 0,
+    imageUrl: (item.imageUrl as string | undefined) ?? "",
+    slug: (item.slug as string | undefined) ?? deriveSlug(name, id),
+    enrichmentStatus: item.enrichmentStatus as LegoSet["enrichmentStatus"],
+    pricingProviderCount: (item.pricingProviderCount as number | undefined) ?? 0,
+  };
+  return set;
+}
+
+/** Hard cap on returned rows when includeOrphans=true. The full Rebrickable
+ * catalog is ~27K; rendering all of them via SSR exceeds Lambda timeout +
+ * payload limits. Real solution is server-side pagination (Plan C). */
+const ORPHAN_CAP = 500;
+
 export async function loadStoredCatalog(opts?: { includeOrphans?: boolean }): Promise<LegoSet[]> {
   const ddb = getDynamo();
   const table = getTableName();
   if (!ddb || !table) {
     throw new Error("DynamoDB not configured (DYNAMODB_TABLE env var missing).");
   }
+  const includeOrphans = opts?.includeOrphans === true;
   const all: LegoSet[] = [];
   let ExclusiveStartKey: Record<string, unknown> | undefined;
   do {
+    // When orphans are NOT requested, push the eligibility filter into the
+    // Scan via a FilterExpression so we don't materialize 27K rows in the
+    // Lambda. DDB still reads every row (no GSI yet — Plan C) but only
+    // returns matches over the wire.
+    const filterParts = ["begins_with(pk, :p)", "sk = :sk"];
+    const eav: Record<string, unknown> = { ":p": "CATALOG#PRODUCT#", ":sk": "v1" };
+    if (!includeOrphans) {
+      filterParts.push("attribute_exists(pricingProviderCount) AND pricingProviderCount >= :one");
+      eav[":one"] = 1;
+    }
     const res = await ddb.send(new ScanCommand({
       TableName: table,
-      FilterExpression: "begins_with(pk, :p) AND sk = :sk",
-      ExpressionAttributeValues: { ":p": "CATALOG#PRODUCT#", ":sk": "v1" },
+      FilterExpression: filterParts.join(" AND "),
+      ExpressionAttributeValues: eav,
       ExclusiveStartKey,
+      Limit: 1000,
     }));
-    for (const item of res.Items || []) all.push(item as LegoSet);
+    for (const item of res.Items || []) {
+      const normalized = normalizeStoredRow(item as Record<string, unknown>);
+      if (!normalized) continue;
+      if (GWP_DENYLIST.has(normalized.id) || isNonRetailSetId(normalized)) continue;
+      all.push(applyOverridesAndComputed(normalized));
+    }
     ExclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
+    if (includeOrphans && all.length >= ORPHAN_CAP) break;
   } while (ExclusiveStartKey);
 
-  if (opts?.includeOrphans) return all;
+  if (includeOrphans) return all.slice(0, ORPHAN_CAP);
   return all.filter(isEligibleForDashboard);
 }
 
