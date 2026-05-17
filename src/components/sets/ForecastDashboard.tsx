@@ -91,8 +91,10 @@ export function ForecastDashboard({ items }: ForecastDashboardProps) {
 
         <section className="flex-1 min-w-0" aria-label="Set forecasts">
           {/* Sticky toolbar: search + result count + mobile filters trigger.
-              Site header is h-14 (56px) sticky z-50, so this docks just below at top-14 z-30. */}
-          <div className="sticky top-14 z-30 -mx-4 md:-mx-8 mb-4 border-b-2 border-jet-black/10 bg-paper/95 px-4 md:px-8 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
+              Site header is h-14 (56px) sticky z-50, so this docks just below at top-14 z-30.
+              Negative margins only on mobile so it bleeds to screen edges; on desktop it stays
+              inside the section column so it doesn't overlap the sticky filter sidebar. */}
+          <div className="sticky top-14 z-30 -mx-4 md:mx-0 mb-4 border-b-2 border-jet-black/10 bg-paper/95 px-4 md:px-0 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <SearchBox
