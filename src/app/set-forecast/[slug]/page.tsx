@@ -6,6 +6,7 @@ import { getProductBySlug } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { forecastForSet } from "@/lib/domain/lego-forecast";
 import { loadHistory } from "@/lib/db/lego-history";
+import { getLatestModelManifest } from "@/lib/ml/lego-forecast-models";
 import { resolveBricklinkSetUrl } from "@/lib/domain/lego-bricklink";
 import { SignalBadge } from "@/components/sets/SignalBadge";
 import { ForecastChart } from "@/components/sets/ForecastChart";
@@ -47,11 +48,12 @@ export default async function SlugPage({ params }: PageProps) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [pricing, history] = await Promise.all([
+  const [pricing, history, manifest] = await Promise.all([
     getPricing(product),
     loadHistory(product, "new-sealed"),
+    getLatestModelManifest(),
   ]);
-  const forecast = forecastForSet(product, pricing, history);
+  const forecast = forecastForSet(product, pricing, history, manifest);
   const bricklinkUrl = resolveBricklinkSetUrl(product.setNumber);
 
   const currentPrice = forecast.currentPrice;

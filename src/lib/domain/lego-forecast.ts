@@ -11,15 +11,21 @@ import type {
 import { buildScenarioOutlook } from "./scenarios";
 import { deriveConfidence } from "./confidence-display";
 import { eraFor } from "@/lib/data/lego-themes";
+import {
+  getModelConfidence,
+  type ModelManifestSummary,
+} from "@/lib/ml/lego-forecast-models";
 
 export const SP500_ANNUAL_RETURN = 0.105;
 
 /**
- * Sparse-data guard. Sets with fewer historical price points than this
- * threshold are flagged `forecastEligible: false` and the detail page
- * renders an "Insufficient price history" panel instead of a forecast.
+ * Sparse-data guard (spec §11, `lf-ml-sparse-guard`). Sets with fewer
+ * historical monthly price points than this threshold are flagged
+ * `forecastEligible: false` and the detail page renders an "Insufficient
+ * price history" panel instead of a forecast. Raised from 3 → 6 once
+ * sparse-history forecasts proved noisy in backtests.
  */
-export const MIN_HISTORY_POINTS_FOR_FORECAST = 3;
+export const MIN_HISTORY_POINTS_FOR_FORECAST = 6;
 
 /* ------------------------------------------------------------------ */
 /* New v2 forecast surface — `forecastForSet` + `SetForecast`         */
@@ -62,6 +68,7 @@ export interface SetForecast {
   ineligibleReason?: string;
   updatedAt: string;
   currentPrice: number | null;
+  modelVersion: string | null;
 }
 
 interface EraCagrTriple {
@@ -228,10 +235,12 @@ function buildDrivers(set: LegoSet, adjusted: EraCagrTriple): string[] {
 export function forecastForSet(
   set: LegoSet,
   pricing: ProductPricing | null,
-  history: HistoryPoint[]
+  history: HistoryPoint[],
+  manifest: ModelManifestSummary | null = null
 ): SetForecast {
   const currentPrice = pickPrice(pricing);
   const updatedAt = new Date().toISOString();
+  const modelVersion = manifest?.available ? manifest.version : null;
 
   if (history.length < MIN_HISTORY_POINTS_FOR_FORECAST) {
     return {
@@ -243,9 +252,10 @@ export function forecastForSet(
       drivers: [],
       breakdown: [],
       forecastEligible: false,
-      ineligibleReason: "Insufficient price history",
+      ineligibleReason: "Insufficient price history (need ≥6 monthly points)",
       updatedAt,
       currentPrice,
+      modelVersion,
     };
   }
 
@@ -277,17 +287,43 @@ export function forecastForSet(
     },
   };
 
+  const heuristicConfidence = deriveSetConfidence(history, set);
+  // If a trained model manifest exists, blend its sample-size + R² band
+  // with the heuristic confidence: the more conservative of the two wins,
+  // so a thin/poor model never inflates confidence above the heuristic.
+  let confidence: Confidence = heuristicConfidence;
+  const drivers = buildDrivers(set, adjusted);
+  const breakdown = buildBreakdownRows(set, base, adjusted);
+  if (manifest?.available && manifest.metrics) {
+    const modelConfidence = getModelConfidence(manifest.sampleCount, manifest.metrics);
+    const rank: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
+    confidence = rank[modelConfidence] < rank[heuristicConfidence]
+      ? modelConfidence
+      : heuristicConfidence;
+    const r2 = manifest.metrics.p5yr.r2;
+    const rmse = manifest.metrics.p5yr.rmse;
+    breakdown.push({
+      label: "Model confidence band",
+      value: `R²=${r2.toFixed(2)} · RMSE=$${Math.round(rmse).toLocaleString()}`,
+      sub: `XGBoost trained on ${manifest.sampleCount.toLocaleString()} samples (${manifest.version})`,
+    });
+    drivers.push(
+      `Model v${manifest.version}: 5yr R²=${r2.toFixed(2)} on ${manifest.sampleCount.toLocaleString()} samples — heuristic CAGR retained, confidence ${confidence}.`
+    );
+  }
+
   return {
     setId: set.id,
     recommendation: recommendFromCagr(adjusted.m),
-    confidence: deriveSetConfidence(history, set),
+    confidence,
     scenarios,
     projectionSeries: series,
-    drivers: buildDrivers(set, adjusted),
-    breakdown: buildBreakdownRows(set, base, adjusted),
+    drivers: drivers.slice(0, 6),
+    breakdown,
     forecastEligible: true,
     updatedAt,
     currentPrice,
+    modelVersion,
   };
 }
 

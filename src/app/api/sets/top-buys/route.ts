@@ -4,6 +4,7 @@ import { getPricing } from "@/lib/domain/lego-estimate";
 import { forecastForSet } from "@/lib/domain/lego-forecast";
 import { loadHistory } from "@/lib/db/lego-history";
 import { enforceIpRateLimit } from "@/lib/db/rate-limit";
+import { getLatestModelManifest } from "@/lib/ml/lego-forecast-models";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : 10;
 
   const catalog = await loadStoredCatalog();
+  const manifest = await getLatestModelManifest();
 
   const scored = await Promise.all(
     catalog.map(async (product) => {
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
         getPricing(product),
         loadHistory(product, "new-sealed"),
       ]);
-      const forecast = forecastForSet(product, pricing, history);
+      const forecast = forecastForSet(product, pricing, history, manifest);
       return { product, forecast };
     })
   );
