@@ -3,6 +3,9 @@ import { TrendingUp, Package, BarChart3 } from "lucide-react";
 import { BrickHero } from "@/components/ui/BrickHero";
 import { BrickCard } from "@/components/ui/BrickCard";
 import { BrickButton } from "@/components/ui/BrickButton";
+import { HeroStats } from "@/components/HeroStats";
+
+export const revalidate = 300;
 
 const PILLARS = [
   {
@@ -25,7 +28,7 @@ const PILLARS = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero */}
@@ -37,6 +40,13 @@ export default function HomePage() {
         secondaryCta={{ label: "Read the methodology", href: "/set-forecast/methodology" }}
         accentColor="yellow"
       />
+
+      {/* Live catalog count */}
+      <section className="bg-sunshine-yellow border-b-2 border-jet-black px-4 py-3">
+        <div className="mx-auto max-w-[1240px] flex justify-center md:justify-start">
+          <HeroStats />
+        </div>
+      </section>
 
       {/* Pillars */}
       <section className="py-20 px-4 bg-paper">

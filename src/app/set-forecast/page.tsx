@@ -3,6 +3,7 @@ import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { computeForecast } from "@/lib/domain/lego-forecast";
 import { ForecastDashboard } from "@/components/sets/ForecastDashboard";
+import { HeroStats } from "@/components/HeroStats";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -46,6 +47,9 @@ export default async function SetForecastPage() {
             Data-driven 5-year return projections for sealed-in-box LEGO sets.
             Filter by theme, status, or investment signal.
           </p>
+          <div className="mt-4">
+            <HeroStats />
+          </div>
         </div>
       </div>
       <ForecastDashboard items={items} />
