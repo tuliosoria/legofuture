@@ -27,24 +27,24 @@ const jetbrainsMono = JetBrains_Mono({
 
 const SITE_NAME = "LegoFuture";
 const SITE_DESCRIPTION =
-  "Forecast sealed LEGO set appreciation. Buy / hold / sell signals on 20+ popular sets including Star Wars UCS, Technic, Architecture, Modular Buildings, and more.";
+  "Forecast LEGO set appreciation. Buy / hold / sell signals on 20+ popular sets including Star Wars UCS, Technic, Architecture, Modular Buildings, and more.";
 
 export const metadata: Metadata = {
   applicationName: SITE_NAME,
   title: {
-    default: `${SITE_NAME} — Sealed LEGO Set Forecasts`,
+    default: `${SITE_NAME} — LEGO Set Forecasts`,
     template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Sealed LEGO Set Forecasts`,
+    title: `${SITE_NAME} — LEGO Set Forecasts`,
     description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Sealed LEGO Set Forecasts`,
+    title: `${SITE_NAME} — LEGO Set Forecasts`,
     description: SITE_DESCRIPTION,
   },
 };

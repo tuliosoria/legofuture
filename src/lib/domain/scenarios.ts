@@ -1,4 +1,4 @@
-import type { Scenario, ScenarioOutlook } from "@/lib/types/sealed";
+import type { Scenario, ScenarioOutlook } from "@/lib/types/lego";
 
 export const SP500_ANNUAL_RETURN = 0.105;
 

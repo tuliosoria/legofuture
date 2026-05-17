@@ -1,4 +1,4 @@
-import type { SealedProduct, Forecast } from "@/lib/types/sealed";
+import type { LegoSet, Forecast } from "@/lib/types/lego";
 
 export interface ForecastBreakdownItem {
   label: string;
@@ -8,7 +8,7 @@ export interface ForecastBreakdownItem {
 }
 
 export function buildForecastBreakdown(
-  product: SealedProduct,
+  product: LegoSet,
   forecast: Forecast
 ): ForecastBreakdownItem[] {
   const ageYears = new Date().getFullYear() - product.releaseYear;

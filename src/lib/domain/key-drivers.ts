@@ -1,4 +1,4 @@
-import type { SealedProduct, Forecast } from "@/lib/types/sealed";
+import type { LegoSet, Forecast } from "@/lib/types/lego";
 
 export interface KeyDriver {
   label: string;
@@ -7,7 +7,7 @@ export interface KeyDriver {
 }
 
 export function buildKeyDrivers(
-  product: SealedProduct,
+  product: LegoSet,
   forecast: Forecast
 ): KeyDriver[] {
   const ageYears = new Date().getFullYear() - product.releaseYear;

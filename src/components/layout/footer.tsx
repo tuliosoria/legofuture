@@ -18,7 +18,7 @@ export function Footer() {
                 LegoFuture
               </p>
               <p className="type-body-sm text-slate-300 leading-relaxed">
-                Educational forecasting tools for sealed LEGO sets.
+                Educational forecasting tools for LEGO sets.
                 Not financial advice. Do your own research.
               </p>
               <p className="mt-4 type-body-sm text-slate-500 leading-relaxed">
@@ -31,12 +31,12 @@ export function Footer() {
               <p className="type-eyebrow text-slate-500 mb-3">Tools</p>
               <ul className="space-y-2">
                 <li>
-                  <Link href="/sealed-forecast" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
-                    Sealed Forecast
+                  <Link href="/set-forecast" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
+                    Set Forecast
                   </Link>
                 </li>
                 <li>
-                  <Link href="/sealed-forecast/methodology" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
+                  <Link href="/set-forecast/methodology" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
                     Methodology
                   </Link>
                 </li>

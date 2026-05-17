@@ -1,4 +1,4 @@
-import type { LegoTheme } from "@/lib/types/sealed";
+import type { LegoTheme } from "@/lib/types/lego";
 
 export interface ThemeInfo {
   value: LegoTheme;

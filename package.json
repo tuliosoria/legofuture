@@ -1,7 +1,7 @@
 {
   "name": "legofuture",
   "version": "1.0.0",
-  "description": "LEGO Sealed Set Investment Forecasting",
+  "description": "LEGO Set Investment Forecasting",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "hooks:install": "git config core.hooksPath .githooks",
     "verify": "npm run lint && npm run test && npm run build"

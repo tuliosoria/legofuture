@@ -9,7 +9,7 @@ const PILLARS = [
     accent: "blue" as const,
     icon: <TrendingUp className="w-6 h-6" strokeWidth={1.75} aria-hidden />,
     title: "Live pricing from PriceCharting",
-    desc: "Current sealed prices sourced directly from PriceCharting, with a bundled fallback snapshot. Always fresh, always honest.",
+    desc: "Current prices sourced directly from PriceCharting, with a bundled fallback snapshot. Always fresh, always honest.",
   },
   {
     accent: "red" as const,
@@ -32,9 +32,9 @@ export default function HomePage() {
       <BrickHero
         eyebrow="Free · No login required · Educational tools only"
         title="Forecast every sealed brick."
-        description="Buy / hold / sell signals on 20+ popular sealed sets — Star Wars UCS, Technic, Architecture, Modular Buildings, and more."
-        primaryCta={{ label: "See the forecast", href: "/sealed-forecast" }}
-        secondaryCta={{ label: "Read the methodology", href: "/sealed-forecast/methodology" }}
+        description="Buy / hold / sell signals on 20+ popular sets — Star Wars UCS, Technic, Architecture, Modular Buildings, and more."
+        primaryCta={{ label: "See the forecast", href: "/set-forecast" }}
+        secondaryCta={{ label: "Read the methodology", href: "/set-forecast/methodology" }}
         accentColor="yellow"
       />
 
@@ -71,9 +71,9 @@ export default function HomePage() {
           <p className="type-body-lg text-slate-700 mb-8">
             No sign-up. No paywall. Informational tools only.
           </p>
-          <Link href="/sealed-forecast">
+          <Link href="/set-forecast">
             <BrickButton variant="primary" size="lg">
-              Open Sealed Forecast
+              Open Set Forecast
             </BrickButton>
           </Link>
           <div className="mt-10 rounded-card border-2 border-slate-100 bg-pure-white px-5 py-4 text-left type-body-sm text-slate-500 leading-relaxed max-w-2xl mx-auto">

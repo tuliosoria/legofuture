@@ -1,4 +1,4 @@
-import type { Confidence } from "@/lib/types/sealed";
+import type { Confidence } from "@/lib/types/lego";
 
 export interface ConfidenceInput {
   /** Years since release */

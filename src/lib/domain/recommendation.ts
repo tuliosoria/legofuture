@@ -1,4 +1,4 @@
-import type { Confidence, Recommendation } from "@/lib/types/sealed";
+import type { Confidence, Recommendation } from "@/lib/types/lego";
 
 export interface RecommendationInput {
   annualRate: number;

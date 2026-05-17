@@ -8,8 +8,8 @@ import { BrickButton } from "@/components/ui/BrickButton";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/sealed-forecast", label: "Sealed Forecast" },
-  { href: "/sealed-forecast/methodology", label: "Methodology" },
+  { href: "/set-forecast", label: "Set Forecast" },
+  { href: "/set-forecast/methodology", label: "Methodology" },
 ];
 
 export function Header() {
@@ -54,7 +54,7 @@ export function Header() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex">
-            <Link href="/sealed-forecast">
+            <Link href="/set-forecast">
               <BrickButton variant="primary" size="sm">
                 See forecasts
               </BrickButton>
@@ -98,7 +98,7 @@ export function Header() {
               </Link>
             ))}
             <div className="mt-4">
-              <Link href="/sealed-forecast" onClick={() => setMobileOpen(false)}>
+              <Link href="/set-forecast" onClick={() => setMobileOpen(false)}>
                 <BrickButton variant="primary" size="sm" className="w-full justify-center">
                   See forecasts
                 </BrickButton>

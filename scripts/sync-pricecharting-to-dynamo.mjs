@@ -2,12 +2,12 @@
 /**
  * scripts/sync-pricecharting-to-dynamo.mjs
  *
- * Fetches live sealed-set pricing from PriceCharting for every set in the
+ * Fetches live LEGO set pricing from PriceCharting for every set in the
  * curated catalog and writes both the catalog and the pricing snapshots to
  * the legofuture-cache DynamoDB table.
  *
  * Schema:
- *   pk = "CATALOG"  sk = "PRODUCT#<id>"   → full SealedProduct fields
+ *   pk = "CATALOG"  sk = "PRODUCT#<id>"   → full LegoSet fields
  *   pk = "PRICING"  sk = "PRODUCT#<id>"   → ProductPricing fields
  *   pk = "META"     sk = "LAST_SYNC"      → { lastSync: ISO timestamp }
  *
@@ -24,7 +24,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, BatchWriteCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CATALOG_PATH = join(__dirname, "../src/lib/data/sealed-ml/sealed-catalog.json");
+const CATALOG_PATH = join(__dirname, "../src/lib/data/lego-ml/lego-catalog.json");
 
 const TOKEN = process.env.PRICECHARTING_API_TOKEN;
 const TABLE = process.env.DYNAMODB_TABLE || "legofuture-cache";
