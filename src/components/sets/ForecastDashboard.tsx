@@ -16,6 +16,7 @@ import { SkeletonForecastCard } from "./SkeletonForecastCard";
 import { TopBuyOpportunities } from "./TopBuyOpportunities";
 import { FilterSidebar } from "./filter-sidebar";
 import { SearchBox } from "./search-box";
+import { SortMenu } from "./sort-menu";
 import {
   DEFAULT_FILTER_STATE,
   isDefaultState,
@@ -248,6 +249,15 @@ export function ForecastDashboard({
                 <SlidersHorizontal className="h-4 w-4" aria-hidden />
                 Filters
               </button>
+            </div>
+            {/* Sort dropdown sits directly below the search bar so it's
+                discoverable without opening the mobile filter drawer. */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <SortMenu
+                value={state.sort}
+                onChange={(sort) => updateState({ ...state, sort })}
+                compact
+              />
             </div>
             {/* Showing X of Y sets · show-all toggle (URL preserved across pages) */}
             <p className="mt-2 type-body-sm text-slate-500" aria-live="polite">
