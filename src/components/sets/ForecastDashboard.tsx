@@ -29,6 +29,7 @@ const PAGE_LIMIT = 60;
 interface CatalogApiResponse {
   items: CatalogItem[];
   total: number;
+  withPricing?: number;
   page: number;
   limit: number;
   hasMore: boolean;
@@ -39,6 +40,8 @@ interface ForecastDashboardProps {
   initialItems: CatalogItem[];
   /** Total catalog count from the SSR scan (may update once API responds). */
   initialTotal: number;
+  /** Number of sets in the catalog that have at least one pricing provider. */
+  initialWithPricing?: number;
   includeOrphans?: boolean;
   /** @internal Test helper: shows Load-more button regardless of sentinel */
   _testForceLoadMore?: boolean;
@@ -59,6 +62,7 @@ function buildCatalogUrl(page: number, state: FilterState, includeOrphans: boole
 export function ForecastDashboard({
   initialItems,
   initialTotal,
+  initialWithPricing,
   includeOrphans = true,
   _testForceLoadMore = false,
 }: ForecastDashboardProps) {
@@ -69,6 +73,7 @@ export function ForecastDashboard({
   // Pagination state
   const [items, setItems] = useState<CatalogItem[]>(initialItems);
   const [total, setTotal] = useState(initialTotal);
+  const [withPricing, setWithPricing] = useState<number | undefined>(initialWithPricing);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialItems.length < initialTotal);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -92,6 +97,7 @@ export function ForecastDashboard({
           setItems(data.items);
         }
         setTotal(data.total);
+        if (typeof data.withPricing === "number") setWithPricing(data.withPricing);
         setPage(data.page);
         setHasMore(data.hasMore);
         loadedForState.current = filterState;
@@ -186,10 +192,19 @@ export function ForecastDashboard({
   return (
     <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
       <div className="mb-6">
-        {/* "X of Y sets" counter */}
+        {/* "X of Y sets" counter + pricing coverage */}
         <p className="type-body-sm text-slate-600">
           <span className="type-mono-num text-jet-black">{total.toLocaleString()}</span>{" "}
           sets tracked
+          {typeof withPricing === "number" && withPricing > 0 && (
+            <>
+              {" · "}
+              <span className="type-mono-num text-jet-black">
+                {withPricing.toLocaleString()}
+              </span>{" "}
+              with pricing data
+            </>
+          )}
         </p>
       </div>
 

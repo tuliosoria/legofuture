@@ -88,6 +88,10 @@ export async function GET(request: NextRequest) {
   }
 
   const total = filtered.length;
+  const withPricing = filtered.reduce(
+    (n, set) => n + ((set.pricingProviderCount ?? 0) >= 1 ? 1 : 0),
+    0,
+  );
   const start = (page - 1) * limit;
   const pageItems = filtered.slice(start, start + limit);
   const hasMore = start + limit < total;
@@ -102,7 +106,7 @@ export async function GET(request: NextRequest) {
   );
 
   return NextResponse.json(
-    { items, total, page, limit, hasMore },
+    { items, total, withPricing, page, limit, hasMore },
     { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
   );
 }

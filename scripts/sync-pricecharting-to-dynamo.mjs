@@ -2,16 +2,23 @@
 /**
  * scripts/sync-pricecharting-to-dynamo.mjs
  *
- * Paginates the PriceCharting `lego` category to exhaustion and writes
- * CATALOG + PRICING rows plus sync_metadata to DynamoDB `legofuture-cache`.
+ * Iterates each LEGO "console" (theme) on PriceCharting and paginates with
+ * offset=0,200,400,... until two consecutive empty pages, deduping by product
+ * id across consoles. For each catalog row we join to its Rebrickable twin
+ * (CATALOG#PRODUCT#{setNum}-1) to inherit imageUrl/pieceCount/themeName/year.
  *
- * Spec §7. No mock data, no hard-coded set lists, no arbitrary cap.
+ * Why per-console: PriceCharting's broad `q=lego` search ignores `offset` and
+ * always returns the same 200 rows (~72 LEGO matches). Per-console queries do
+ * paginate correctly, surfacing thousands of sets.
+ *
+ * Writes CATALOG#PRODUCT, PRICING#PRODUCT, HISTORY#PRODUCT, and META#LAST_SYNC
+ * to the legofuture-cache DynamoDB table.
  */
 
 try {
   await import("dotenv/config");
 } catch {
-  // dotenv is optional; the npm script loads env via `node --env-file=.env.local`
+  // dotenv is optional; npm script loads env via `node --env-file=.env.local`
 }
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -19,18 +26,32 @@ import {
   DynamoDBDocumentClient,
   BatchWriteCommand,
   PutCommand,
+  GetCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const TOKEN = process.env.PRICECHARTING_API_TOKEN;
 const TABLE = process.env.DYNAMODB_TABLE || "legofuture-cache";
 const REGION = process.env.AWS_REGION || "us-east-1";
-const PAGE_SIZE = Number(process.env.PRICECHARTING_PAGE_SIZE || 250);
+const PAGE_SIZE = Number(process.env.PRICECHARTING_PAGE_SIZE || 200);
+const RATE_LIMIT_MS = Number(process.env.PRICECHARTING_RATE_LIMIT_MS || 1100);
 const ENDPOINT = "https://www.pricecharting.com/api/products";
+const CONSOLES_FILE = join(__dirname, "data", "pricecharting-lego-consoles.json");
+const MAX_EMPTY_STREAK = 2;
+const MAX_OFFSET = Number(process.env.PRICECHARTING_MAX_OFFSET || 5000);
 
 if (!TOKEN) {
   console.error("[pc-sync] FATAL: PRICECHARTING_API_TOKEN is required");
   process.exit(1);
 }
+
+const consoles = JSON.parse(readFileSync(CONSOLES_FILE, "utf8"));
+console.log(`[pc-sync] loaded ${consoles.length} LEGO consoles`);
 
 const ddb = DynamoDBDocumentClient.from(
   new DynamoDBClient({ region: REGION }),
@@ -43,38 +64,27 @@ function monthlyHistorySk(date = new Date()) {
   return date.toISOString().slice(0, 7);
 }
 
-function toHistoryItem(p, nowIso) {
-  return {
-    pk: `HISTORY#PRODUCT#${p.id}`,
-    sk: monthlyHistorySk(new Date(nowIso)),
-    id: String(p.id),
-    loose: p["loose-price"] ?? null,
-    cib: p["cib-price"] ?? null,
-    new: p["new-price"] ?? null,
-    source: "pricecharting-snapshot",
-    capturedAt: nowIso,
-  };
-}
-
-async function fetchPage(offset) {
-  const url = `${ENDPOINT}?q=lego&t=${TOKEN}&offset=${offset}`;
+async function fetchPage(consoleQuery, offset) {
+  const url = `${ENDPOINT}?q=${encodeURIComponent(consoleQuery)}&t=${TOKEN}&offset=${offset}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status} at offset=${offset}`);
+    if (res.status === 429) {
+      await sleep(5000);
+      return fetchPage(consoleQuery, offset);
+    }
+    throw new Error(`HTTP ${res.status} for q="${consoleQuery}" offset=${offset}`);
   }
   const data = await res.json();
   if (data.status && data.status !== "success") {
     throw new Error(
-      `API error at offset=${offset}: ${data["error-message"] || data.status}`,
+      `API error q="${consoleQuery}" offset=${offset}: ${data["error-message"] || data.status}`,
     );
   }
   const all = Array.isArray(data.products) ? data.products : [];
-  return all.filter((p) => {
-    const consoleName = String(p["console-name"] || "");
-    if (!consoleName.startsWith("LEGO ")) return false;
-    if (consoleName === "LEGO Games") return false;
-    return true;
-  });
+  // Keep only rows whose console-name matches the queried console exactly.
+  // PC returns mixed results when the query is ambiguous; the exact-match
+  // filter prevents (e.g.) "LEGO Star Wars" sets from leaking into "LEGO City"
+  return all.filter((p) => String(p["console-name"] || "") === consoleQuery);
 }
 
 async function batchWriteAll(items) {
@@ -91,16 +101,54 @@ async function batchWriteAll(items) {
       unprocessed = res.UnprocessedItems || {};
       if (unprocessed[TABLE] && unprocessed[TABLE].length > 0) {
         attempt++;
-        if (attempt > 6) {
-          throw new Error("BatchWrite exceeded retry budget");
-        }
+        if (attempt > 6) throw new Error("BatchWrite exceeded retry budget");
         await sleep(200 * 2 ** attempt);
       }
     }
   }
 }
 
-function toCatalogItem(p, nowIso) {
+/**
+ * Extract a LEGO set number from a PC product-name like "Cloud City #10123"
+ * or "Millennium Falcon #75192". Returns the numeric portion or null.
+ */
+function extractSetNumber(productName) {
+  if (!productName) return null;
+  const m = String(productName).match(/#\s*(\d{3,7})\b/);
+  return m ? m[1] : null;
+}
+
+// In-memory cache of rebrickable lookups within a single run
+const rebrickableCache = new Map();
+
+/**
+ * Look up the Rebrickable twin row for a PC product. Tries `{setNum}-1`,
+ * `{setNum}-2` (variants), then gives up. Returns the DDB Item or null.
+ */
+async function findRebrickableTwin(setNumber) {
+  if (!setNumber) return null;
+  if (rebrickableCache.has(setNumber)) return rebrickableCache.get(setNumber);
+  for (const variant of ["-1", "-2", "-3"]) {
+    try {
+      const res = await ddb.send(new GetCommand({
+        TableName: TABLE,
+        Key: { pk: `CATALOG#PRODUCT#${setNumber}${variant}`, sk: "v1" },
+      }));
+      if (res.Item) {
+        rebrickableCache.set(setNumber, res.Item);
+        return res.Item;
+      }
+    } catch (e) {
+      // tolerate transient lookup failures
+    }
+  }
+  rebrickableCache.set(setNumber, null);
+  return null;
+}
+
+async function toCatalogItem(p, nowIso) {
+  const setNumber = extractSetNumber(p["product-name"]);
+  const twin = await findRebrickableTwin(setNumber);
   return {
     pk: `CATALOG#PRODUCT#${p.id}`,
     sk: "v1",
@@ -110,7 +158,15 @@ function toCatalogItem(p, nowIso) {
     genre: p.genre ?? null,
     releaseDate: p["release-date"] ?? null,
     raw: p,
-    enrichmentStatus: "pricecharting-only",
+    // Rebrickable-enriched fields (only set when we found a twin)
+    setNumber: setNumber ?? undefined,
+    name: twin?.name ?? p["product-name"] ?? undefined,
+    imageUrl: twin?.imageUrl ?? undefined,
+    themeName: twin?.themeName ?? undefined,
+    pieceCount: twin?.pieceCount ?? undefined,
+    year: twin?.year ?? undefined,
+    rebrickableUrl: twin?.rebrickableUrl ?? undefined,
+    enrichmentStatus: twin ? "pricecharting+rebrickable" : "pricecharting-only",
     pricingProviderCount: 1,
     updatedAt: nowIso,
   };
@@ -134,126 +190,112 @@ function toPricingItem(p, nowIso) {
   };
 }
 
+function toHistoryItem(p, nowIso) {
+  return {
+    pk: `HISTORY#PRODUCT#${p.id}`,
+    sk: monthlyHistorySk(new Date(nowIso)),
+    id: String(p.id),
+    loose: p["loose-price"] ?? null,
+    cib: p["cib-price"] ?? null,
+    new: p["new-price"] ?? null,
+    source: "pricecharting-snapshot",
+    capturedAt: nowIso,
+  };
+}
+
+async function syncConsole(consoleName, seenIds) {
+  let offset = 0;
+  let consecutiveEmpty = 0;
+  let consoleTotal = 0;
+  while (offset <= MAX_OFFSET) {
+    let products;
+    try {
+      products = await fetchPage(consoleName, offset);
+    } catch (e) {
+      console.warn(`[pc-sync] WARN ${consoleName} offset=${offset}: ${e.message}`);
+      break;
+    }
+    if (products.length === 0) {
+      consecutiveEmpty += 1;
+      if (consecutiveEmpty >= MAX_EMPTY_STREAK) break;
+      offset += PAGE_SIZE;
+      await sleep(RATE_LIMIT_MS);
+      continue;
+    }
+    consecutiveEmpty = 0;
+
+    // Dedupe across consoles
+    const fresh = products.filter((p) => {
+      const id = String(p.id);
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    if (fresh.length > 0) {
+      const nowIso = new Date().toISOString();
+      const catalogItems = await Promise.all(fresh.map((p) => toCatalogItem(p, nowIso)));
+      const pricingItems = fresh.map((p) => toPricingItem(p, nowIso));
+      const historyItems = fresh.map((p) => toHistoryItem(p, nowIso));
+      await batchWriteAll(catalogItems);
+      await batchWriteAll(pricingItems);
+      await batchWriteAll(historyItems);
+      consoleTotal += fresh.length;
+    }
+
+    offset += PAGE_SIZE;
+    await sleep(RATE_LIMIT_MS);
+  }
+  return consoleTotal;
+}
+
 async function main() {
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
-  let pages = 0;
-  let total = 0;
-  let lastLoggedBucket = 0;
-  let historySnapshotsWritten = 0;
+  const seenIds = new Set();
+  let grandTotal = 0;
+  let consolesWithData = 0;
 
-  try {
-    let offset = 0;
-    let consecutiveEmpty = 0;
-    const MAX_EMPTY_STREAK = 3;
-    while (true) {
-      const products = await fetchPage(offset);
-      pages += 1;
-      if (products.length === 0) {
-        consecutiveEmpty++;
-        if (consecutiveEmpty >= MAX_EMPTY_STREAK) break;
-        offset += PAGE_SIZE;
-        await sleep(1100);
-        continue;
-      } else {
-        consecutiveEmpty = 0;
-      }
-
-      const nowIso = new Date().toISOString();
-      const catalogItems = products.map((p) => toCatalogItem(p, nowIso));
-      const pricingItems = products.map((p) => toPricingItem(p, nowIso));
-      await batchWriteAll(catalogItems);
-      await batchWriteAll(pricingItems);
-
-      try {
-        const historyItems = products.map((p) => toHistoryItem(p, nowIso));
-        for (const Item of historyItems) {
-          await ddb.send(
-            new PutCommand({ TableName: TABLE, Item }),
-          );
-          historySnapshotsWritten += 1;
-        }
-      } catch (histErr) {
-        console.warn(
-          `[pc-sync] WARN history snapshot write failed: ${histErr?.message || histErr}`,
-        );
-      }
-
-      total += products.length;
-      const bucket = Math.floor(total / 500);
-      if (bucket > lastLoggedBucket) {
-        lastLoggedBucket = bucket;
-        console.log(`[pc-sync] fetched=${total} pages=${pages}`);
-      }
-
-      if (products.length < PAGE_SIZE) {
-        // Filtered count below page size doesn't imply EOF — only consecutive
-        // empty pages do. Continue paginating.
-      }
-      offset += PAGE_SIZE;
-      await sleep(1100); // respect API rate limit (1 req/sec)
-    }
-
-    const completedAt = new Date().toISOString();
-    const meta = {
-      total_products_synced: total,
-      pages_fetched: pages,
-      started_at: startedAt,
-      completed_at: completedAt,
-      source: "pricecharting",
-      token_present: true,
-      history_snapshots_written: historySnapshotsWritten,
-    };
-
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE,
-        Item: { pk: "META#LAST_SYNC", sk: "v1", ...meta },
-      }),
-    );
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE,
-        Item: {
-          pk: `META#SYNC_METADATA#${completedAt}`,
-          sk: "v1",
-          ...meta,
-        },
-      }),
-    );
-
-    const durationMs = Date.now() - startMs;
+  for (let i = 0; i < consoles.length; i++) {
+    const c = consoles[i];
+    const beforeSize = seenIds.size;
+    const wrote = await syncConsole(c, seenIds);
+    if (wrote > 0) consolesWithData += 1;
+    grandTotal += wrote;
+    const elapsed = ((Date.now() - startMs) / 1000).toFixed(0);
     console.log(
-      `[pc-sync] DONE total=${total} pages=${pages} duration=${durationMs}ms`,
+      `[pc-sync] [${i + 1}/${consoles.length}] ${c}: +${wrote} (total ids=${seenIds.size}, +${seenIds.size - beforeSize}, ${elapsed}s elapsed)`,
     );
-    process.exit(0);
-  } catch (err) {
-    const failedAt = new Date().toISOString();
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[pc-sync] ERROR: ${message}`);
-    try {
-      await ddb.send(
-        new PutCommand({
-          TableName: TABLE,
-          Item: {
-            pk: `META#LIMITATIONS#${failedAt}`,
-            sk: "v1",
-            script: "sync-pricecharting",
-            error: message,
-            partial_count: total,
-            pages_fetched: pages,
-            started_at: startedAt,
-            failed_at: failedAt,
-          },
-        }),
-      );
-    } catch (writeErr) {
-      console.error(
-        `[pc-sync] also failed to write LIMITATIONS row: ${writeErr.message}`,
-      );
-    }
-    process.exit(1);
   }
+
+  const completedAt = new Date().toISOString();
+  const meta = {
+    total_products_synced: grandTotal,
+    unique_products: seenIds.size,
+    consoles_attempted: consoles.length,
+    consoles_with_data: consolesWithData,
+    started_at: startedAt,
+    completed_at: completedAt,
+    source: "pricecharting-per-console",
+    token_present: true,
+  };
+
+  await ddb.send(new PutCommand({
+    TableName: TABLE,
+    Item: { pk: "META#LAST_SYNC", sk: "v1", ...meta },
+  }));
+  await ddb.send(new PutCommand({
+    TableName: TABLE,
+    Item: { pk: `META#SYNC_METADATA#${completedAt}`, sk: "v1", ...meta },
+  }));
+
+  const durationMs = Date.now() - startMs;
+  console.log(
+    `[pc-sync] DONE unique=${seenIds.size} written=${grandTotal} consoles=${consolesWithData}/${consoles.length} duration=${(durationMs/1000).toFixed(0)}s`,
+  );
 }
 
-main();
+main().catch((err) => {
+  console.error("[pc-sync] FATAL:", err);
+  process.exit(1);
+});

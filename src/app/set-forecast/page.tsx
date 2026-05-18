@@ -57,6 +57,10 @@ export default async function SetForecastPage({
   catalog.sort((a, b) => a.name.localeCompare(b.name));
 
   const initialTotal = catalog.length;
+  const initialWithPricing = catalog.reduce(
+    (n, set) => n + ((set.pricingProviderCount ?? 0) >= 1 ? 1 : 0),
+    0,
+  );
   const firstPage = catalog.slice(0, SSR_FIRST_PAGE);
 
   const initialItems = await Promise.all(
@@ -88,6 +92,7 @@ export default async function SetForecastPage({
       <ForecastDashboard
         initialItems={initialItems}
         initialTotal={initialTotal}
+        initialWithPricing={initialWithPricing}
         includeOrphans={includeOrphans}
       />
     </main>
