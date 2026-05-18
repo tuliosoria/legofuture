@@ -2,13 +2,17 @@
 import crypto from "node:crypto";
 import OAuth from "oauth-1.0a";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, BatchWriteCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, BatchWriteCommand, GetCommand, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const REQUIRED = ["BRICKLINK_CONSUMER_KEY","BRICKLINK_CONSUMER_SECRET","BRICKLINK_TOKEN_VALUE","BRICKLINK_TOKEN_SECRET"];
 for (const k of REQUIRED) if (!process.env[k]) { console.error(`[bl-sync] FATAL: ${k} required`); process.exit(1); }
 
 const TABLE = process.env.DYNAMODB_TABLE || "legofuture-cache";
 const REGION = process.env.AWS_REGION || "us-east-1";
+const RATE_LIMIT_MS = Number(process.env.BRICKLINK_RATE_LIMIT_MS || 1100);
+const PROGRESS_KEY = { pk: "META#BRICKLINK_PROGRESS", sk: "v1" };
+const PROGRESS_FLUSH_EVERY = 25;
+const RESUME = process.env.BRICKLINK_RESUME !== "false"; // default true
 
 const oauth = OAuth({
   consumer: { key: process.env.BRICKLINK_CONSUMER_KEY, secret: process.env.BRICKLINK_CONSUMER_SECRET },
@@ -20,11 +24,17 @@ const token = { key: process.env.BRICKLINK_TOKEN_VALUE, secret: process.env.BRIC
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), { marshallOptions: { removeUndefinedValues: true } });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function blFetch(url) {
+async function blFetch(url, attempt = 0) {
   const req = { url, method: "GET" };
   const auth = oauth.toHeader(oauth.authorize(req, token));
   const res = await fetch(url, { headers: { ...auth, Accept: "application/json" } });
-  if (res.status === 429) { await sleep(3000); return blFetch(url); }
+  if (res.status === 429) {
+    const backoff = Math.min(60000, 5000 * Math.pow(2, attempt));
+    console.warn(`[bl-sync] 429 — backoff ${backoff}ms (attempt ${attempt + 1})`);
+    await sleep(backoff);
+    if (attempt < 4) return blFetch(url, attempt + 1);
+    throw new Error(`429 too many retries for ${url}`);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   const json = await res.json();
   if (json.meta && json.meta.code >= 400) throw new Error(`BL API ${json.meta.code}: ${json.meta.message}`);
@@ -37,15 +47,34 @@ async function loadAllSetNums() {
   do {
     const res = await ddb.send(new ScanCommand({
       TableName: TABLE,
-      FilterExpression: "begins_with(pk, :p) AND sk = :sk",
+      FilterExpression: "begins_with(pk, :p) AND sk = :sk AND attribute_exists(setNumber)",
       ExpressionAttributeValues: { ":p": "CATALOG#PRODUCT#", ":sk": "v1" },
-      ProjectionExpression: "id",
+      ProjectionExpression: "setNumber",
       ExclusiveStartKey,
     }));
-    for (const item of res.Items || []) out.push(item.id);
+    for (const item of res.Items || []) if (item.setNumber) out.push(String(item.setNumber));
     ExclusiveStartKey = res.LastEvaluatedKey;
   } while (ExclusiveStartKey);
-  return out;
+  // Sort for deterministic resume order
+  return Array.from(new Set(out)).sort();
+}
+
+async function loadProgress() {
+  if (!RESUME) return { lastProcessed: null, processedCount: 0 };
+  try {
+    const res = await ddb.send(new GetCommand({ TableName: TABLE, Key: PROGRESS_KEY }));
+    return {
+      lastProcessed: res.Item?.lastProcessed ?? null,
+      processedCount: res.Item?.processedCount ?? 0,
+    };
+  } catch { return { lastProcessed: null, processedCount: 0 }; }
+}
+
+async function saveProgress(lastProcessed, processedCount) {
+  await ddb.send(new PutCommand({
+    TableName: TABLE,
+    Item: { ...PROGRESS_KEY, lastProcessed, processedCount, updatedAt: new Date().toISOString() },
+  }));
 }
 
 async function fetchPriceGuide(setNum, condition) {
@@ -94,15 +123,34 @@ async function syncOne(setNum) {
 
 async function main() {
   const setNums = await loadAllSetNums();
-  console.log(`[bl-sync] ${setNums.length} sets to refresh`);
-  let i = 0;
-  for (const setNum of setNums) {
-    await syncOne(setNum);
-    i++;
-    if (i % 100 === 0) console.log(`[bl-sync] ${i}/${setNums.length}`);
-    await sleep(200);
+  console.log(`[bl-sync] ${setNums.length} sets eligible (have setNumber)`);
+  const { lastProcessed, processedCount: priorCount } = await loadProgress();
+  let startIdx = 0;
+  if (lastProcessed) {
+    const found = setNums.indexOf(lastProcessed);
+    if (found >= 0) {
+      startIdx = found + 1;
+      console.log(`[bl-sync] resuming after ${lastProcessed} (idx=${startIdx}, prior=${priorCount})`);
+    }
   }
-  console.log(`[bl-sync] done: ${i} sets refreshed`);
+  let i = startIdx;
+  const t0 = Date.now();
+  for (; i < setNums.length; i++) {
+    const setNum = setNums[i];
+    try {
+      await syncOne(setNum);
+    } catch (e) {
+      console.warn(`[bl-sync] ${setNum}: ${e.message}`);
+    }
+    if ((i + 1) % PROGRESS_FLUSH_EVERY === 0) {
+      await saveProgress(setNum, i + 1);
+      const elapsed = Math.round((Date.now() - t0) / 1000);
+      console.log(`[bl-sync] ${i + 1}/${setNums.length} (last=${setNum}, ${elapsed}s elapsed)`);
+    }
+    await sleep(RATE_LIMIT_MS);
+  }
+  await saveProgress(setNums[setNums.length - 1] ?? null, i);
+  console.log(`[bl-sync] DONE: processed ${i - startIdx} sets in ${Math.round((Date.now() - t0) / 1000)}s`);
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
