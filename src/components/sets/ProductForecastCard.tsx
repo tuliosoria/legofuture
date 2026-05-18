@@ -40,7 +40,10 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
     retired: product.retired,
   });
 
-  const noPricing = product.pricingProviderCount === 0;
+  // Use estimated baseline price when no marketplace data exists; the
+  // "no data" placeholder now appears only when we can't even synthesize.
+  const isEstimated = forecast.priceSource === "estimated";
+  const noPricing = forecast.currentPrice <= 0;
   const accentTop: AccentColor = noPricing ? "black" : (signalToAccent[forecast.signal] ?? "black");
   const roi = forecast.roiPercent;
   const dollarGain = forecast.dollarGain;
@@ -91,7 +94,7 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
         </div>
 
         {/* Stats */}
-        {product.pricingProviderCount === 0 ? (
+        {noPricing ? (
           <div className="mb-3 rounded-sm border border-dashed border-jet-black/40 bg-slate-50 p-3 text-center">
             <p className="type-eyebrow text-slate-500">No pricing data yet</p>
             <p className="type-body-sm text-slate-600 mt-1">
@@ -101,7 +104,17 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
         ) : (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <p className="type-eyebrow text-slate-500">Now</p>
+            <p className="type-eyebrow text-slate-500 flex items-center gap-1">
+              Now
+              {isEstimated && (
+                <span
+                  title="Estimated from piece count × theme median — no marketplace data yet"
+                  className="bg-slate-200 text-slate-700 type-eyebrow px-1 py-px rounded-chip"
+                >
+                  est
+                </span>
+              )}
+            </p>
             <p className="type-mono-num text-jet-black">
               ${forecast.currentPrice.toLocaleString()}
             </p>

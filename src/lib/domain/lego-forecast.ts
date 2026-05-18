@@ -4,6 +4,7 @@ import type {
   HistoryPoint,
   LegoEra,
   LegoSet,
+  PriceSource,
   ProductPricing,
   Recommendation,
   Scenario,
@@ -17,6 +18,10 @@ import {
 } from "@/lib/ml/lego-forecast-models";
 import { loadForecastModel } from "@/lib/db/lego-forecast-models";
 import { scoreModel } from "@/lib/domain/lego-ml-scoring";
+import {
+  synthesizeBaselinePrice,
+  type PricingBaseline,
+} from "@/lib/domain/lego-baseline";
 
 export const SP500_ANNUAL_RETURN = 0.105;
 
@@ -343,9 +348,27 @@ export function forecastForSet(
  */
 export function computeForecast(
   product: LegoSet,
-  pricing: ProductPricing | null
+  pricing: ProductPricing | null,
+  baseline: PricingBaseline | null = null,
 ): Forecast {
-  const currentPrice = pricing?.newPrice ?? product.originalMsrp;
+  // Resolve current price with three-tier fallback:
+  //   1. live market price (PriceCharting / BrickLink / Brickset / eBay merge)
+  //   2. original MSRP
+  //   3. synthesized baseline (pieceCount × theme-median $/piece) for the
+  //      huge majority of Rebrickable-only catalog rows that lack both signals.
+  let currentPrice = pricing?.newPrice ?? 0;
+  let priceSource: PriceSource = currentPrice > 0 ? "market" : "unknown";
+  if (currentPrice === 0 && product.originalMsrp > 0) {
+    currentPrice = product.originalMsrp;
+    priceSource = "msrp";
+  }
+  if (currentPrice === 0) {
+    const synth = synthesizeBaselinePrice(product, baseline);
+    if (synth !== null && synth > 0) {
+      currentPrice = synth;
+      priceSource = "estimated";
+    }
+  }
   const ageYears = new Date().getFullYear() - product.releaseYear;
   const id = product.id;
 
@@ -369,6 +392,7 @@ export function computeForecast(
         moderate: stub,
         optimist: stub,
       },
+      priceSource,
     };
   }
 
@@ -397,14 +421,17 @@ export function computeForecast(
   }
 
   const salesVolume = pricing?.salesVolume ? Number(pricing.salesVolume) : null;
-  const confidence: Confidence = deriveConfidence({
+  let confidence: Confidence = deriveConfidence({
     ageYears,
     salesVolume,
     retired: product.retired,
     msrpRatio: product.originalMsrp > 0 ? currentPrice / product.originalMsrp : null,
   });
+  // Synthesized prices should never claim high confidence regardless of age.
+  if (priceSource === "estimated" && confidence === "high") confidence = "medium";
+  if (priceSource === "estimated" && confidence === "medium") confidence = "low";
 
-  const spread = product.retired ? 20 : 28;
+  const spread = priceSource === "estimated" ? 45 : product.retired ? 20 : 28;
 
   const scenarios: Record<Scenario, ReturnType<typeof buildScenarioOutlook>> = {
     pessimist: buildScenarioOutlook(currentPrice, baseCagr, "pessimist"),
@@ -424,9 +451,13 @@ export function computeForecast(
     signal: moderate.signal,
     confidence,
     status: "ready",
-    statusMessage: null,
+    statusMessage:
+      priceSource === "estimated"
+        ? "Current price estimated from piece count × theme median — no marketplace data yet."
+        : null,
     predictionSpreadPercent: spread,
     scenarios,
+    priceSource,
   };
 }
 

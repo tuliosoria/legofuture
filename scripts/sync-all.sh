@@ -39,4 +39,10 @@ wait
 # Supplementary PC chart scrape.
 run_if pc-history scripts/scrape-pricecharting-history.mjs PRICECHARTING_API_TOKEN
 
+# Rebuild the piece-count × theme baseline used to synthesize a current
+# price for the ~85% of catalog rows without marketplace data. Needs no
+# credentials of its own — reads what the syncs above wrote.
+echo "[sync-all] RUN baseline-builder"
+node --env-file=.env.local scripts/build-baseline-pricing.mjs || echo "[sync-all] WARN baseline-builder failed (continuing)"
+
 echo "[sync-all] complete"

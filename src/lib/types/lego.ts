@@ -94,6 +94,15 @@ export interface ScenarioOutlook {
 
 export type ForecastStatus = "ready" | "too_new" | "insufficient_data";
 
+/**
+ * Source of the `currentPrice` used to build the forecast.
+ *  - "market"    — at least one external source (PC/BL/Brickset/eBay) supplied a price
+ *  - "msrp"      — fell back to the original MSRP
+ *  - "estimated" — synthesized from piece count × theme median $/piece
+ *  - "unknown"   — no signal at all (currentPrice is 0)
+ */
+export type PriceSource = "market" | "msrp" | "estimated" | "unknown";
+
 export interface Forecast {
   id: string;
   currentPrice: number;
@@ -107,6 +116,8 @@ export interface Forecast {
   statusMessage: string | null;
   predictionSpreadPercent: number;
   scenarios: Record<Scenario, ScenarioOutlook>;
+  /** Tells the UI whether `currentPrice` came from real data or was synthesized. */
+  priceSource?: PriceSource;
 }
 
 export interface ProjectionPoint {

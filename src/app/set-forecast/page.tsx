@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { computeForecast } from "@/lib/domain/lego-forecast";
+import { loadBaseline } from "@/lib/domain/lego-baseline";
 import { ForecastDashboard } from "@/components/sets/ForecastDashboard";
 import { HeroStats } from "@/components/HeroStats";
 
@@ -63,10 +64,11 @@ export default async function SetForecastPage({
   );
   const firstPage = catalog.slice(0, SSR_FIRST_PAGE);
 
+  const baseline = await loadBaseline();
   const initialItems = await Promise.all(
     firstPage.map(async (product) => {
       const pricing = await getPricing(product);
-      const forecast = computeForecast(product, pricing ?? EMPTY_PRICING);
+      const forecast = computeForecast(product, pricing ?? EMPTY_PRICING, baseline);
       return { product, forecast };
     })
   );

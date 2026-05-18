@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { computeForecast } from "@/lib/domain/lego-forecast";
+import { loadBaseline } from "@/lib/domain/lego-baseline";
 import { matchesFreeText, matchesStatus } from "@/lib/domain/lego-filter";
 import type { LegoSet, ProductPricing } from "@/lib/types/lego";
 
@@ -97,10 +98,11 @@ export async function GET(request: NextRequest) {
   const hasMore = start + limit < total;
 
   // --- compute forecasts for this page only ---------------------------------
+  const baseline = await loadBaseline();
   const items = await Promise.all(
     pageItems.map(async (product) => {
       const pricing = await getPricing(product);
-      const forecast = computeForecast(product, pricing ?? DEFAULT_PRICING);
+      const forecast = computeForecast(product, pricing ?? DEFAULT_PRICING, baseline);
       return { product, forecast };
     })
   );

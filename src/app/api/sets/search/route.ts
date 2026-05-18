@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { computeForecast } from "@/lib/domain/lego-forecast";
+import { loadBaseline } from "@/lib/domain/lego-baseline";
 import { enforceIpRateLimit } from "@/lib/db/rate-limit";
 import { coerceTheme } from "@/lib/data/lego-themes";
 import {
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
     : "moderate";
 
   const catalog = await loadStoredCatalog();
+  const baseline = await loadBaseline();
 
   const items: CatalogItem[] = await Promise.all(
     catalog.map(async (product) => {
@@ -105,7 +107,8 @@ export async function GET(request: NextRequest) {
           loosePrice: null,
           salesVolume: null,
           lastFetched: "",
-        }
+        },
+        baseline,
       );
       return { product, forecast };
     })
