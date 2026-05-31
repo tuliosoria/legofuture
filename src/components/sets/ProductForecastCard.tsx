@@ -1,8 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { LegoSet, Forecast } from "@/lib/types/lego";
-import { deriveRecommendation } from "@/lib/domain/recommendation";
 import { BrickCard } from "@/components/ui/BrickCard";
 import { BrickButton } from "@/components/ui/BrickButton";
 import type { ComponentProps } from "react";
@@ -14,39 +12,44 @@ interface ProductForecastCardProps {
   forecast: Forecast;
 }
 
-function trendIcon(roi: number) {
-  if (roi > 5) return <TrendingUp className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
-  if (roi < -5) return <TrendingDown className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
-  return <Minus className="h-4 w-4" aria-hidden strokeWidth={1.75} />;
-}
-
-function roiColor(roi: number): string {
-  if (roi > 5) return "text-pure-green";
-  if (roi < -5) return "text-brick-red";
+function scoreColor(score?: number): string {
+  if (!score) return "text-slate-400";
+  if (score >= 80) return "text-pure-green";
+  if (score >= 60) return "text-sunshine-yellow";
   return "text-slate-500";
 }
 
-const signalToAccent: Record<string, AccentColor> = {
-  Buy: "blue",
-  Hold: "yellow",
-  Sell: "black",
+const SIGNAL_CHIP: Record<string, string> = {
+  "Strong Buy": "bg-pure-green text-jet-black",
+  "Buy": "bg-bright-blue text-pure-white",
+  "Watch": "bg-sunshine-yellow text-jet-black",
+  "Avoid": "bg-slate-200 text-slate-700",
+  "DataIssue": "bg-brick-red text-pure-white",
+};
+
+function ScreenerSignalChip({ signal }: { signal?: string }) {
+  if (!signal || signal === "DataIssue") return null;
+  return (
+    <span className={`inline-flex items-center rounded-chip px-2 py-0.5 type-eyebrow ${SIGNAL_CHIP[signal] ?? SIGNAL_CHIP["Avoid"]}`}>
+      {signal}
+    </span>
+  );
+}
+
+const screenerSignalToAccent: Record<string, AccentColor> = {
+  "Strong Buy": "blue",
+  "Buy": "blue",
+  "Watch": "yellow",
+  "Avoid": "black",
+  "DataIssue": "black",
 };
 
 export function ProductForecastCard({ product, forecast }: ProductForecastCardProps) {
-  const recommendation = deriveRecommendation({
-    annualRate: forecast.annualRate,
-    confidence: forecast.confidence,
-    releaseYear: product.releaseYear,
-    retired: product.retired,
-  });
-
-  // Use estimated baseline price when no marketplace data exists; the
-  // "no data" placeholder now appears only when we can't even synthesize.
   const isEstimated = forecast.priceSource === "estimated";
   const noPricing = forecast.currentPrice <= 0;
-  const accentTop: AccentColor = noPricing ? "black" : (signalToAccent[forecast.signal] ?? "black");
-  const roi = forecast.roiPercent;
-  const dollarGain = forecast.dollarGain;
+  const accentTop: AccentColor = noPricing
+    ? "black"
+    : (screenerSignalToAccent[forecast.screenerSignal ?? ""] ?? "black");
 
   return (
     <Link
@@ -102,43 +105,68 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
             </p>
           </div>
         ) : (
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div>
-            <p className="type-eyebrow text-slate-500 flex items-center gap-1">
-              Now
-              {isEstimated && (
-                <span
-                  title="Estimated from piece count × theme median — no marketplace data yet"
-                  className="bg-slate-200 text-slate-700 type-eyebrow px-1 py-px rounded-chip"
-                >
-                  est
+          <div className="space-y-2 mb-3">
+            {/* Score + Signal */}
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="type-eyebrow text-slate-500">Score</p>
+                <p className={`type-mono-num text-2xl font-bold leading-none ${scoreColor(forecast.investmentScore)}`}>
+                  {forecast.investmentScore ?? "—"}
+                </p>
+              </div>
+              <ScreenerSignalChip signal={forecast.screenerSignal} />
+            </div>
+
+            {/* Price row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="type-eyebrow text-slate-500 flex items-center gap-1">
+                  Now
+                  {isEstimated && (
+                    <span
+                      title="Estimated from piece count × theme median — no marketplace data yet"
+                      className="bg-slate-200 text-slate-700 type-eyebrow px-1 py-px rounded-chip"
+                    >
+                      est
+                    </span>
+                  )}
+                </p>
+                <p className="type-mono-num text-jet-black">
+                  ${forecast.currentPrice.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="type-eyebrow text-slate-500">Est. net gain</p>
+                {forecast.estimatedNetGain != null ? (
+                  <p className={`type-mono-num ${forecast.estimatedNetGain >= 0 ? "text-pure-green" : "text-brick-red"}`}>
+                    {forecast.estimatedNetGain >= 0 ? "+" : ""}${Math.round(forecast.estimatedNetGain).toLocaleString()}
+                  </p>
+                ) : (
+                  <p className="type-mono-num text-slate-400">—</p>
+                )}
+              </div>
+            </div>
+
+            {/* Liquidity */}
+            {forecast.liquidityScore && forecast.liquidityScore !== "Insufficient" && (
+              <p className="type-eyebrow text-slate-500">
+                Liquidity:{" "}
+                <span className={
+                  forecast.liquidityScore === "High" ? "text-pure-green" :
+                  forecast.liquidityScore === "Medium" ? "text-bright-blue" :
+                  "text-sunshine-yellow"
+                }>
+                  {forecast.liquidityScore}
                 </span>
-              )}
-            </p>
-            <p className="type-mono-num text-jet-black">
-              ${forecast.currentPrice.toLocaleString()}
-            </p>
+              </p>
+            )}
+
+            {/* Signal explainer bullets (Buy / Strong Buy only) */}
+            {(forecast.screenerSignal === "Buy" || forecast.screenerSignal === "Strong Buy") &&
+              forecast.signalExplainer?.slice(0, 2).map((line, i) => (
+                <p key={i} className="type-eyebrow text-slate-600">· {line}</p>
+              ))}
           </div>
-          <div>
-            <p className="type-eyebrow text-slate-500">5y Proj.</p>
-            <p className="type-mono-num font-bold text-pure-green">
-              ${forecast.projectedValue.toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="type-eyebrow text-slate-500">ROI</p>
-            <p className={`type-mono-num flex items-center gap-0.5 ${roiColor(roi)}`}>
-              {trendIcon(roi)}
-              {roi >= 0 ? "+" : ""}{roi.toFixed(1)}%
-            </p>
-          </div>
-          <div>
-            <p className="type-eyebrow text-slate-500">Gain</p>
-            <p className={`type-mono-num ${roiColor(roi)}`}>
-              {dollarGain >= 0 ? "+" : ""}${dollarGain.toLocaleString()}
-            </p>
-          </div>
-        </div>
         )}
 
         <BrickButton variant="ghost" size="sm" className="w-full justify-center text-jet-black">

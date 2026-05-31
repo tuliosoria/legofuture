@@ -9,6 +9,7 @@ interface SortControlsProps {
 }
 
 const OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "investmentScore", label: "Score ↓" },
   { value: "gain", label: "Dollar gain ↓" },
   { value: "upside", label: "ROI % ↓" },
   { value: "price-desc", label: "Price ↓" },

@@ -23,7 +23,20 @@ import {
   runFilterPipeline,
   type CatalogItem,
   type FilterState,
+  type PageMode,
 } from "@/lib/domain/lego-filter";
+
+const MODE_TABS: { value: PageMode; label: string }[] = [
+  { value: "Investment Screener", label: "Investment Screener" },
+  { value: "Retired Set Tracker", label: "Retired Tracker" },
+  { value: "Collector Catalog", label: "Collector Catalog" },
+];
+
+const MODE_TO_API: Record<PageMode, string> = {
+  "Investment Screener": "investment",
+  "Retired Set Tracker": "tracker",
+  "Collector Catalog": "collector",
+};
 
 const PAGE_LIMIT = 60;
 
@@ -53,6 +66,7 @@ function buildCatalogUrl(page: number, state: FilterState, includeOrphans: boole
   const sp = new URLSearchParams();
   sp.set("page", String(page));
   sp.set("limit", String(PAGE_LIMIT));
+  sp.set("mode", MODE_TO_API[state.pageMode ?? "Investment Screener"]);
   if (state.query) sp.set("q", state.query);
   if (state.themes.length === 1) sp.set("theme", state.themes[0]);
   if (state.status !== "all") sp.set("status", state.status);
@@ -138,6 +152,7 @@ export function ForecastDashboard({
         const serverFiltersChanged =
           next.query !== loadedForState.current.query ||
           next.status !== loadedForState.current.status ||
+          next.pageMode !== loadedForState.current.pageMode ||
           JSON.stringify(next.themes) !== JSON.stringify(loadedForState.current.themes);
         if (serverFiltersChanged) {
           setItems([]);
@@ -176,8 +191,10 @@ export function ForecastDashboard({
   const topBuys = useMemo(
     () =>
       items
-        .filter(({ forecast }) => forecast.signal === "Buy")
-        .sort((a, b) => (b.forecast.dollarGain ?? 0) - (a.forecast.dollarGain ?? 0))
+        .filter(({ forecast }) =>
+          forecast.screenerSignal === "Strong Buy" || forecast.screenerSignal === "Buy"
+        )
+        .sort((a, b) => (b.forecast.investmentScore ?? 0) - (a.forecast.investmentScore ?? 0))
         .slice(0, 5),
     [items]
   );
@@ -209,7 +226,25 @@ export function ForecastDashboard({
         </p>
       </div>
 
-      {topBuys.length > 0 && (
+      {/* Mode tab bar */}
+      <div className="flex gap-0 mb-6 border-b-2 border-jet-black/20">
+        {MODE_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => updateState({ ...DEFAULT_FILTER_STATE, pageMode: tab.value })}
+            className={`px-4 py-2 type-body-sm border-b-2 -mb-0.5 transition-colors ${
+              state.pageMode === tab.value
+                ? "border-jet-black font-semibold text-jet-black"
+                : "border-transparent text-slate-500 hover:text-jet-black"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {topBuys.length > 0 && state.pageMode === "Investment Screener" && (
         <div className="mb-10">
           <TopBuyOpportunities items={topBuys} />
         </div>

@@ -9,8 +9,10 @@ import { SortControls } from "./sort-controls";
 import type {
   FilterState,
   RecommendationFilter,
+  ScreenerSignalFilter,
   StatusFilter,
 } from "@/lib/domain/lego-filter";
+import type { LiquidityTier } from "@/lib/types/lego";
 
 interface FilterSidebarProps {
   state: FilterState;
@@ -36,6 +38,21 @@ const RECOMMENDATION_OPTIONS: { value: RecommendationFilter; label: string }[] =
   { value: "buy", label: "Buy" },
   { value: "hold", label: "Hold" },
   { value: "sell", label: "Sell" },
+];
+
+const SIGNAL_OPTIONS: { value: ScreenerSignalFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "Strong Buy", label: "Strong Buy" },
+  { value: "Buy", label: "Buy" },
+  { value: "Watch", label: "Watch" },
+  { value: "Avoid", label: "Avoid" },
+];
+
+const LIQUIDITY_OPTIONS: { value: "all" | LiquidityTier; label: string }[] = [
+  { value: "all", label: "Any" },
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" },
 ];
 
 const SCENARIO_OPTIONS: { value: Scenario; label: string }[] = [
@@ -109,6 +126,10 @@ export function FilterSidebar({
     onChange({ ...state, recommendation });
   const setScenario = (scenario: Scenario) => onChange({ ...state, scenario });
   const setSort = (sort: FilterState["sort"]) => onChange({ ...state, sort });
+  const setScreenerSignal = (screenerSignalFilter: ScreenerSignalFilter) =>
+    onChange({ ...state, screenerSignalFilter });
+  const setLiquidityTier = (liquidityTier: FilterState["liquidityTier"]) =>
+    onChange({ ...state, liquidityTier });
 
   const content = (
     <div className="flex flex-col gap-6">
@@ -185,20 +206,53 @@ export function FilterSidebar({
         ))}
       </fieldset>
 
-      {/* Recommendation */}
-      <fieldset className="space-y-1">
-        <legend className="type-eyebrow text-slate-500 mb-1">Recommendation</legend>
-        {RECOMMENDATION_OPTIONS.map((o) => (
-          <Radio
-            key={o.value}
-            name="recommendation"
-            value={o.value}
-            current={state.recommendation}
-            label={o.label}
-            onSelect={setRecommendation}
-          />
-        ))}
-      </fieldset>
+      {/* Liquidity (Investment Screener + Retired Tracker) */}
+      {state.pageMode !== "Collector Catalog" && (
+        <fieldset className="space-y-1">
+          <legend className="type-eyebrow text-slate-500 mb-1">Liquidity</legend>
+          {LIQUIDITY_OPTIONS.map((o) => (
+            <Radio
+              key={o.value}
+              name="liquidity"
+              value={o.value}
+              current={state.liquidityTier}
+              label={o.label}
+              onSelect={setLiquidityTier}
+            />
+          ))}
+        </fieldset>
+      )}
+
+      {/* Signal (Investment Screener) or Recommendation (other modes) */}
+      {state.pageMode === "Investment Screener" ? (
+        <fieldset className="space-y-1">
+          <legend className="type-eyebrow text-slate-500 mb-1">Signal</legend>
+          {SIGNAL_OPTIONS.map((o) => (
+            <Radio
+              key={o.value}
+              name="signal"
+              value={o.value}
+              current={state.screenerSignalFilter}
+              label={o.label}
+              onSelect={setScreenerSignal}
+            />
+          ))}
+        </fieldset>
+      ) : (
+        <fieldset className="space-y-1">
+          <legend className="type-eyebrow text-slate-500 mb-1">Recommendation</legend>
+          {RECOMMENDATION_OPTIONS.map((o) => (
+            <Radio
+              key={o.value}
+              name="recommendation"
+              value={o.value}
+              current={state.recommendation}
+              label={o.label}
+              onSelect={setRecommendation}
+            />
+          ))}
+        </fieldset>
+      )}
 
       {/* Scenario */}
       <fieldset className="space-y-1">

@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "LEGO Set Forecast | LegoFuture",
+  title: "LEGO Investment Screener | LegoFuture",
   description:
-    "Browse price forecasts for LEGO sets. Filter by theme, retirement status, and investment signal.",
+    "Screen active and retiring-soon LEGO sets using retirement timing, resale liquidity, demand signals, and estimated net profit after fees.",
 };
 
 /**
@@ -38,11 +38,9 @@ const EMPTY_PRICING = {
 export default async function SetForecastPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ pricingOnly?: string }> | { pricingOnly?: string };
+  searchParams?: Promise<{ all?: string }> | { all?: string };
 }) {
   const params = (await Promise.resolve(searchParams)) ?? {};
-  // Default view: pricing-only — show only sets with real market data.
-  // Opt-in to the full catalog via ?all=1 (useful for catalog exploration).
   const includeOrphans = params.all === "1";
 
   // Load catalog — orphan scan capped to SSR_ORPHAN_CAP for fast paint.
@@ -77,13 +75,16 @@ export default async function SetForecastPage({
       {/* Page header */}
       <div className="bg-pure-white border-b-2 border-jet-black">
         <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
-          <p className="type-eyebrow text-slate-500 mb-2">Set forecasts</p>
+          <p className="type-eyebrow text-slate-500 mb-2">Investment screener</p>
           <h1 className="type-display-2 text-jet-black mb-3">
-            Build your position.
+            Find investable LEGO sets before retirement.
           </h1>
           <p className="type-body-lg text-slate-700 max-w-xl">
-            Data-driven 5-year return projections for sealed-in-box LEGO sets.
-            Filter by theme, status, or investment signal.
+            Screen active and retiring-soon boxed LEGO sets using retirement timing,
+            resale liquidity, demand signals, and estimated net profit after fees.
+          </p>
+          <p className="mt-2 type-body-sm text-slate-500">
+            Default results exclude keychains, books, plushies, accessories, and suspicious pricing outliers.
           </p>
           <div className="mt-4">
             <HeroStats />
