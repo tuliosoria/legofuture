@@ -22,6 +22,15 @@ import {
   synthesizeBaselinePrice,
   type PricingBaseline,
 } from "@/lib/domain/lego-baseline";
+import {
+  computeLiquidityScore,
+  computeEstimatedNetGain,
+  detectOutlier,
+  computeInvestmentScore,
+  assignInvestmentUniverse,
+  deriveScreenerSignal,
+  buildSignalExplainer,
+} from "@/lib/domain/lego-investment-score";
 
 export const SP500_ANNUAL_RETURN = 0.105;
 
@@ -369,6 +378,8 @@ export function computeForecast(
       priceSource = "estimated";
     }
   }
+  // Capture raw market price before sanity cap for outlier detection below.
+  const rawMarketPrice = currentPrice;
   // Sanity cap: prices more than 30× MSRP are almost certainly corrupt marketplace data.
   // Revert to MSRP as a safe floor so forecasts remain meaningful.
   if (product.originalMsrp > 0 && currentPrice > product.originalMsrp * 30) {
@@ -399,6 +410,12 @@ export function computeForecast(
         optimist: stub,
       },
       priceSource,
+      estimatedNetGain: 0,
+      investmentScore: 0,
+      liquidityScore: "Insufficient" as const,
+      outlierFlag: false,
+      screenerSignal: "Watch" as const,
+      signalExplainer: [],
     };
   }
 
@@ -447,6 +464,66 @@ export function computeForecast(
 
   const moderate = scenarios.moderate;
 
+  // Investment screener fields
+  // Prefer soldComps90d (eBay comps from sync) over PriceCharting salesVolume
+  const salesVol =
+    product.soldComps90d != null
+      ? product.soldComps90d
+      : pricing?.salesVolume
+        ? Number(pricing.salesVolume)
+        : null;
+  const liquidityScore = computeLiquidityScore(salesVol);
+  // Use raw price (before sanity cap) so outlier detection catches corrupt data
+  // even after the cap has reset currentPrice to a safe value.
+  const outlierFlag = detectOutlier(
+    rawMarketPrice,
+    product.originalMsrp,
+    salesVol
+  );
+  const netGain = computeEstimatedNetGain(
+    moderate.projectedValue,
+    currentPrice,
+    product.pieceCount
+  );
+  const productType = product.productType ?? "Boxed Set";
+  const hasPricing = priceSource === "market";
+  const investmentUniverse = assignInvestmentUniverse(
+    productType,
+    product.retired,
+    outlierFlag,
+    hasPricing
+  );
+  const investmentScore = computeInvestmentScore({
+    annualRate: moderate.annualRate,
+    dollarGain: moderate.dollarGain,
+    confidence,
+    liquidityScore,
+    retiringSoon: product.retiringSoon ?? false,
+    retired: product.retired,
+    retirementYear: product.retirementYear ?? null,
+    originalMsrp: product.originalMsrp,
+    currentPrice,
+  });
+  const screenerSignal = deriveScreenerSignal(
+    investmentScore,
+    liquidityScore,
+    netGain,
+    outlierFlag,
+    investmentUniverse
+  );
+  const signalExplainer = buildSignalExplainer({
+    screenerSignal,
+    retiringSoon: product.retiringSoon ?? false,
+    retired: product.retired,
+    theme: product.theme,
+    liquidityScore,
+    salesVolume: salesVol,
+    currentPrice,
+    originalMsrp: product.originalMsrp,
+    estimatedNetGain: netGain,
+    annualRate: moderate.annualRate,
+  });
+
   return {
     id,
     currentPrice,
@@ -464,6 +541,12 @@ export function computeForecast(
     predictionSpreadPercent: spread,
     scenarios,
     priceSource,
+    estimatedNetGain: netGain,
+    investmentScore,
+    liquidityScore,
+    outlierFlag,
+    screenerSignal,
+    signalExplainer,
   };
 }
 
