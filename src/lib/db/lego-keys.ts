@@ -32,3 +32,15 @@ export function modelChunkSk(horizon: ForecastHorizon, chunkIndex: number): stri
 export function syncMetaPk(source: string, isoTs: string): string {
   return `${SYNC_META_PK_PREFIX}${source}#${isoTs}`;
 }
+
+// --- Curated watchlist keys ---
+export const CURATED_PK_PREFIX = "CURATED#SET#";
+export const VOTE_PK_PREFIX = "VOTE#IP#";
+export const CURATED_SCORES_SK = "scores";
+export const CURATED_VOTE_COUNT_SK = "vote-count";
+
+export const curatedScoresPk = (setNumber: string) =>
+  `${CURATED_PK_PREFIX}${setNumber}`;
+export const voteIpPk = (hashedIp: string) =>
+  `${VOTE_PK_PREFIX}${hashedIp}`;
+export const voteIpSk = (setNumber: string) => `SET#${setNumber}`;
