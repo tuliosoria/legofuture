@@ -10,7 +10,8 @@ interface SortMenuProps {
 }
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
-  { value: "upside", label: "Projected upside (high → low)" },
+  { value: "gain", label: "Dollar gain (high → low)" },
+  { value: "upside", label: "ROI % (high → low)" },
   { value: "price-desc", label: "Price (high → low)" },
   { value: "price-asc", label: "Price (low → high)" },
   { value: "confidence", label: "Confidence (high → low)" },

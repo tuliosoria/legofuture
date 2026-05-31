@@ -21,8 +21,8 @@ describe("loadStoredCatalog", () => {
   });
   it("filters out non-eligible by default", async () => {
     mockSend.mockResolvedValueOnce({ Items: [
-      { id: "A", pricingProviderCount: 2 },
-      { id: "B", pricingProviderCount: 0 },
+      { id: "A", pricingProviderCount: 2, pieceCount: 100, originalMsrp: 29.99 },
+      { id: "B", pricingProviderCount: 0, pieceCount: 100, originalMsrp: 29.99 },
     ], LastEvaluatedKey: undefined });
     const res = await loadStoredCatalog();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

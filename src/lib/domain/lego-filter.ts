@@ -4,6 +4,7 @@ import { buildLegoDisplayName, buildLegoSearchAliases } from "./lego-catalog-sea
 export type StatusFilter = "all" | "active" | "retiring" | "retired";
 export type RecommendationFilter = "all" | "buy" | "hold" | "sell";
 export type SortKey =
+  | "gain"
   | "upside"
   | "price-asc"
   | "price-desc"
@@ -32,7 +33,7 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   status: "all",
   recommendation: "all",
   scenario: "moderate",
-  sort: "upside",
+  sort: "gain",
 };
 
 export function matchesStatus(set: LegoSet, status: StatusFilter): boolean {
@@ -102,6 +103,8 @@ export function sortItems(
         const by = b.product.retirementYear ?? Number.POSITIVE_INFINITY;
         return ay - by;
       }
+      case "gain":
+        return (fb.dollarGain ?? 0) - (fa.dollarGain ?? 0);
       case "upside":
       default:
         return (fb.roiPercent ?? 0) - (fa.roiPercent ?? 0);

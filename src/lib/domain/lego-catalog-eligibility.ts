@@ -15,7 +15,17 @@ export function countPricingProviders(p: PricingProviders | null | undefined): n
   return n;
 }
 
-export interface EligibilityInput { pricingProviderCount?: number }
+export interface EligibilityInput {
+  pricingProviderCount?: number;
+  pieceCount?: number;
+  originalMsrp?: number;
+}
+
 export function isEligibleForDashboard(item: EligibilityInput): boolean {
-  return (item.pricingProviderCount ?? 0) >= 1;
+  if ((item.pricingProviderCount ?? 0) < 1) return false;
+  // Exclude accessories and merchandise: require a meaningful set size or retail price.
+  // Most LEGO gear (keychains, magnets, watches, mini-bags) has 0–10 pieces and <$15 MSRP.
+  const hasPieces = (item.pieceCount ?? 0) >= 30;
+  const hasMsrp = (item.originalMsrp ?? 0) >= 15;
+  return hasPieces || hasMsrp;
 }

@@ -39,6 +39,22 @@ const NON_RETAIL_NAME_PATTERNS = [
   /\bcomic con\b/i,
   /\bpolybag\b/i,
   /\bpolybag exclusive\b/i,
+  // Gear / merchandise — not investable sealed-box sets
+  /\bkey\s?chain\b/i,
+  /\bkey\s?ring\b/i,
+  /\bplush(ie)?\b/i,
+  /\bpencil\s+case\b/i,
+  /\backpack\b/i,
+  /\blanyard\b/i,
+  /\bflip[\s-]?flop/i,
+  /\balarm\s+clock\b/i,
+  /\bsticker\s+book\b/i,
+  /\bactivity\s+book\b/i,
+  /\b(?:colouring|coloring)\s+book\b/i,
+  /\bbandmates\b/i,
+  /\bbuildable\s+watch\b/i,
+  /\bdigital\s+watch\b/i,
+  /\bwatch\s+face\b/i,
 ];
 
 export function isNonRetailSetId(set: {

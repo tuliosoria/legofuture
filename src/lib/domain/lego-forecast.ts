@@ -369,6 +369,12 @@ export function computeForecast(
       priceSource = "estimated";
     }
   }
+  // Sanity cap: prices more than 30× MSRP are almost certainly corrupt marketplace data.
+  // Revert to MSRP as a safe floor so forecasts remain meaningful.
+  if (product.originalMsrp > 0 && currentPrice > product.originalMsrp * 30) {
+    currentPrice = product.originalMsrp;
+    priceSource = "msrp";
+  }
   const ageYears = new Date().getFullYear() - product.releaseYear;
   const id = product.id;
 

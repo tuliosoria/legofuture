@@ -11,12 +11,18 @@ describe("countPricingProviders", () => {
 });
 
 describe("isEligibleForDashboard", () => {
-  it("eligible when ≥1 pricing source", () => {
-    expect(isEligibleForDashboard({ pricingProviderCount: 1 })).toBe(true);
-    expect(isEligibleForDashboard({ pricingProviderCount: 3 })).toBe(true);
+  it("eligible when ≥1 pricing source and meaningful set size", () => {
+    expect(isEligibleForDashboard({ pricingProviderCount: 1, pieceCount: 100 })).toBe(true);
+    expect(isEligibleForDashboard({ pricingProviderCount: 3, originalMsrp: 30 })).toBe(true);
+    expect(isEligibleForDashboard({ pricingProviderCount: 1, pieceCount: 30 })).toBe(true);
+    expect(isEligibleForDashboard({ pricingProviderCount: 1, originalMsrp: 15 })).toBe(true);
   });
   it("ineligible when zero pricing sources", () => {
-    expect(isEligibleForDashboard({ pricingProviderCount: 0 })).toBe(false);
+    expect(isEligibleForDashboard({ pricingProviderCount: 0, pieceCount: 100 })).toBe(false);
     expect(isEligibleForDashboard({})).toBe(false);
+  });
+  it("ineligible when pricing source present but no meaningful set size (merchandise/gear)", () => {
+    expect(isEligibleForDashboard({ pricingProviderCount: 1, pieceCount: 0, originalMsrp: 0 })).toBe(false);
+    expect(isEligibleForDashboard({ pricingProviderCount: 1, pieceCount: 5, originalMsrp: 8 })).toBe(false);
   });
 });
