@@ -24,6 +24,8 @@
     "ml:train": "python3 lego-ml/train.py",
     "ml:retrain": "python3 lego-ml/retrain.py",
     "verify:scripts": "node --env-file=.env.local scripts/verify-syncs.mjs",
+    "sync:curated-scores": "node --env-file=.env.local scripts/sync-external-scores.mjs",
+    "sync:candidates": "node --env-file=.env.local scripts/sync-candidates.mjs",
     "sync:all": "bash scripts/sync-all.sh",
     "build": "next build",
     "start": "next start",
