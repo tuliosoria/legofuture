@@ -54,6 +54,7 @@ function makeItem(id: string): CatalogItem {
     imageUrl: "",
     slug: `set-${id}`,
     pricingProviderCount: 1,
+    investmentUniverse: "InvestableSet" as const,
   };
   const forecast: Forecast = {
     signal: "Hold",

@@ -1,8 +1,10 @@
-import type { LegoSet, LegoTheme, Forecast, Scenario } from "@/lib/types/lego";
+import type { LegoSet, LegoTheme, Forecast, Scenario, LiquidityTier, ScreenerSignal } from "@/lib/types/lego";
 import { buildLegoDisplayName, buildLegoSearchAliases } from "./lego-catalog-search";
 
 export type StatusFilter = "all" | "active" | "retiring" | "retired";
 export type RecommendationFilter = "all" | "buy" | "hold" | "sell";
+export type ScreenerSignalFilter = "all" | "Strong Buy" | "Buy" | "Watch" | "Avoid";
+export type PageMode = "Investment Screener" | "Retired Set Tracker" | "Collector Catalog";
 export type SortKey =
   | "gain"
   | "upside"
@@ -11,7 +13,8 @@ export type SortKey =
   | "confidence"
   | "pieces-asc"
   | "pieces-desc"
-  | "retirement";
+  | "retirement"
+  | "investmentScore";
 
 export interface CatalogItem {
   product: LegoSet;
@@ -25,6 +28,10 @@ export interface FilterState {
   recommendation: RecommendationFilter;
   scenario: Scenario;
   sort: SortKey;
+  pageMode: PageMode;
+  screenerSignalFilter: ScreenerSignalFilter;
+  liquidityTier: "all" | LiquidityTier;
+  minNetGain: number;
 }
 
 export const DEFAULT_FILTER_STATE: FilterState = {
@@ -33,7 +40,11 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   status: "active",
   recommendation: "all",
   scenario: "moderate",
-  sort: "gain",
+  sort: "investmentScore",
+  pageMode: "Investment Screener",
+  screenerSignalFilter: "all",
+  liquidityTier: "all",
+  minNetGain: 0,
 };
 
 export function matchesStatus(set: LegoSet, status: StatusFilter): boolean {
@@ -105,6 +116,8 @@ export function sortItems(
       }
       case "gain":
         return (fb.dollarGain ?? 0) - (fa.dollarGain ?? 0);
+      case "investmentScore":
+        return (b.forecast.investmentScore ?? 0) - (a.forecast.investmentScore ?? 0);
       case "upside":
       default:
         return (fb.roiPercent ?? 0) - (fa.roiPercent ?? 0);
@@ -148,10 +161,23 @@ export function runFilterPipeline(
         ? [aliases.theme]
         : [];
 
+  const universeFilter: string[] | null = (() => {
+    switch (state.pageMode) {
+      case "Investment Screener": return ["InvestableSet"];
+      case "Retired Set Tracker": return ["RetiredTracker"];
+      case "Collector Catalog": return ["CollectorCatalog"];
+      default: return null;
+    }
+  })();
+
   const preTheme = items.filter(({ product, forecast }) => {
+    if (universeFilter && !universeFilter.includes(product.investmentUniverse ?? "DataIssue")) return false;
     if (!matchesStatus(product, effectiveStatus)) return false;
     if (!matchesRecommendation(forecast, state.recommendation)) return false;
     if (!matchesFreeText(product, aliases.freeText)) return false;
+    if (state.liquidityTier !== "all" && forecast.liquidityScore !== state.liquidityTier) return false;
+    if (state.minNetGain > 0 && (forecast.estimatedNetGain ?? 0) < state.minNetGain) return false;
+    if (state.screenerSignalFilter !== "all" && forecast.screenerSignal !== state.screenerSignalFilter) return false;
     return true;
   });
 
@@ -171,6 +197,10 @@ export function isDefaultState(state: FilterState): boolean {
     state.status === "active" &&
     state.recommendation === "all" &&
     state.scenario === "moderate" &&
-    state.sort === "gain"
+    state.sort === "investmentScore" &&
+    state.pageMode === "Investment Screener" &&
+    state.screenerSignalFilter === "all" &&
+    state.liquidityTier === "all" &&
+    state.minNetGain === 0
   );
 }
