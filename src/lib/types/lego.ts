@@ -31,6 +31,30 @@ export type Recommendation = "buy" | "hold" | "sell";
 
 export type Confidence = "high" | "medium" | "low";
 
+export type ProductType =
+  | "Boxed Set"
+  | "Polybag"
+  | "Minifigure Pack"
+  | "Gear"
+  | "Keychain"
+  | "Watch"
+  | "Plush"
+  | "Book"
+  | "Video Game"
+  | "Bag / Case"
+  | "Accessory"
+  | "Unknown";
+
+export type InvestmentUniverse =
+  | "InvestableSet"
+  | "RetiredTracker"
+  | "CollectorCatalog"
+  | "DataIssue";
+
+export type LiquidityTier = "High" | "Medium" | "Low" | "Insufficient";
+
+export type ScreenerSignal = "Strong Buy" | "Buy" | "Watch" | "Avoid" | "DataIssue";
+
 /** Forecast scenario: pessimist = 0.5× base CAGR, optimist = 1.5× */
 export type Scenario = "pessimist" | "moderate" | "optimist";
 
@@ -70,6 +94,10 @@ export interface LegoSet {
   forecastEligible?: boolean;
   enrichmentStatus?: EnrichmentStatus;
   pricingProviderCount?: number;
+  productType?: ProductType;
+  investmentUniverse?: InvestmentUniverse;
+  /** eBay sold comps in last 90 days — populated by sync:ebay-comps script */
+  soldComps90d?: number;
 }
 
 /** Pricing snapshot sourced from PriceCharting */
@@ -118,6 +146,12 @@ export interface Forecast {
   scenarios: Record<Scenario, ScenarioOutlook>;
   /** Tells the UI whether `currentPrice` came from real data or was synthesized. */
   priceSource?: PriceSource;
+  estimatedNetGain?: number;
+  investmentScore?: number;
+  liquidityScore?: LiquidityTier;
+  outlierFlag?: boolean;
+  screenerSignal?: ScreenerSignal;
+  signalExplainer?: string[];
 }
 
 export interface ProjectionPoint {
