@@ -28,4 +28,26 @@ describe("loadStoredCatalog", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(res.map((r: any) => r.id)).toEqual(["A"]);
   });
+  it("populates productType on loaded items", async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [
+        { id: "A", name: "Mini Police Station", setNumber: "30451", pricingProviderCount: 1, pieceCount: 54, originalMsrp: 4.99 },
+        { id: "B", name: "Millennium Falcon", setNumber: "75192", pricingProviderCount: 2, pieceCount: 7541, originalMsrp: 849 },
+      ],
+      LastEvaluatedKey: undefined,
+    });
+    const res = await loadStoredCatalog({ includeOrphans: true });
+    const polybag = res.find((r) => r.id === "A");
+    const falcon = res.find((r) => r.id === "B");
+    expect(polybag?.productType).toBe("Polybag");
+    expect(falcon?.productType).toBe("Boxed Set");
+  });
+  it("exposes soldComps90d from DDB row", async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [{ id: "C", name: "Test Set", setNumber: "12345", pricingProviderCount: 1, pieceCount: 200, originalMsrp: 49, soldComps90d: 15 }],
+      LastEvaluatedKey: undefined,
+    });
+    const res = await loadStoredCatalog({ includeOrphans: true });
+    expect(res[0]?.soldComps90d).toBe(15);
+  });
 });

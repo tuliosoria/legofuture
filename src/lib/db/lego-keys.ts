@@ -44,3 +44,6 @@ export const curatedScoresPk = (setNumber: string) =>
 export const voteIpPk = (hashedIp: string) =>
   `${VOTE_PK_PREFIX}${hashedIp}`;
 export const voteIpSk = (setNumber: string) => `SET#${setNumber}`;
+
+/** SK used when writing eBay sold-comps directly onto a catalog row */
+export const EBAY_COMPS_SK = "ebay-comps";

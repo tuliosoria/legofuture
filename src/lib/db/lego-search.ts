@@ -5,6 +5,7 @@ import type { LegoSet } from "@/lib/types/lego";
 import { eraFor, coerceTheme } from "@/lib/data/lego-themes";
 import { getDynamo, getTableName } from "./dynamo";
 import { isEligibleForDashboard } from "@/lib/domain/lego-catalog-eligibility";
+import { inferProductType } from "@/lib/domain/lego-product-classifier";
 import gwpDenylistData from "@/lib/data/lego-ml/lego-catalog-gwp-denylist.json";
 import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json";
 
@@ -26,7 +27,7 @@ import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json
 const GWP_DENYLIST: ReadonlySet<string> = new Set(gwpDenylistData as string[]);
 
 type CatalogOverride = Partial<
-  Pick<LegoSet, "name" | "imageUrl" | "retirementYear" | "retired" | "theme">
+  Pick<LegoSet, "name" | "imageUrl" | "retirementYear" | "retired" | "theme" | "productType" | "investmentUniverse">
 >;
 const CATALOG_OVERRIDES = catalogOverridesData as Record<string, CatalogOverride>;
 
@@ -84,6 +85,10 @@ function applyOverridesAndComputed(set: LegoSet): LegoSet {
   merged.theme = coerceTheme(merged.theme as unknown as string);
   merged.setNumberPrefix = computeSetNumberPrefix(merged.setNumber);
   merged.era = eraFor(merged.theme);
+  // Infer productType unless already set by override
+  if (!merged.productType) {
+    merged.productType = inferProductType(merged.name, merged.setNumber, merged.pieceCount);
+  }
   if (merged.retired && merged.retirementYear === undefined) {
     merged.retirementYear = merged.retirementYear ?? null;
   } else if (merged.retired === false && merged.retirementYear === undefined) {
@@ -157,6 +162,7 @@ function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
     slug: (item.slug as string | undefined) ?? deriveSlug(name, id),
     enrichmentStatus: item.enrichmentStatus as LegoSet["enrichmentStatus"],
     pricingProviderCount: (item.pricingProviderCount as number | undefined) ?? 0,
+    soldComps90d: typeof item.soldComps90d === "number" ? (item.soldComps90d as number) : undefined,
   };
   return set;
 }
