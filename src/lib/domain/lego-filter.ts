@@ -30,7 +30,7 @@ export interface FilterState {
 export const DEFAULT_FILTER_STATE: FilterState = {
   query: "",
   themes: [],
-  status: "all",
+  status: "active",
   recommendation: "all",
   scenario: "moderate",
   sort: "gain",
@@ -168,9 +168,9 @@ export function isDefaultState(state: FilterState): boolean {
   return (
     state.query === "" &&
     state.themes.length === 0 &&
-    state.status === "all" &&
+    state.status === "active" &&
     state.recommendation === "all" &&
     state.scenario === "moderate" &&
-    state.sort === "upside"
+    state.sort === "gain"
   );
 }

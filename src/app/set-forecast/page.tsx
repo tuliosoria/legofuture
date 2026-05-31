@@ -41,10 +41,9 @@ export default async function SetForecastPage({
   searchParams?: Promise<{ pricingOnly?: string }> | { pricingOnly?: string };
 }) {
   const params = (await Promise.resolve(searchParams)) ?? {};
-  // Default view: show the FULL catalog (~27K sets). Opt-out via ?pricingOnly=1
-  // to narrow down to sets with at least one pricing provider.
-  const pricingOnly = params.pricingOnly === "1";
-  const includeOrphans = !pricingOnly;
+  // Default view: pricing-only — show only sets with real market data.
+  // Opt-in to the full catalog via ?all=1 (useful for catalog exploration).
+  const includeOrphans = params.all === "1";
 
   // Load catalog — orphan scan capped to SSR_ORPHAN_CAP for fast paint.
   // The client refines the real total via /api/sets/catalog (Plan C).

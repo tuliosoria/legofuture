@@ -177,7 +177,7 @@ export function ForecastDashboard({
     () =>
       items
         .filter(({ forecast }) => forecast.signal === "Buy")
-        .sort((a, b) => b.forecast.roiPercent - a.forecast.roiPercent)
+        .sort((a, b) => (b.forecast.dollarGain ?? 0) - (a.forecast.dollarGain ?? 0))
         .slice(0, 5),
     [items]
   );
@@ -270,14 +270,14 @@ export function ForecastDashboard({
               <a
                 href={
                   includeOrphans
-                    ? "/set-forecast?pricingOnly=1"
-                    : "/set-forecast"
+                    ? "/set-forecast"
+                    : "/set-forecast?all=1"
                 }
                 className="underline text-slate-600 hover:text-jet-black"
               >
                 {includeOrphans
                   ? "Show only sets with pricing data"
-                  : "Show all sets"}
+                  : "Show all sets including catalog stubs"}
               </a>
             </p>
           </div>
