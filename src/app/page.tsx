@@ -4,8 +4,49 @@ import { BrickHero } from "@/components/ui/BrickHero";
 import { BrickCard } from "@/components/ui/BrickCard";
 import { BrickButton } from "@/components/ui/BrickButton";
 import { HeroStats } from "@/components/HeroStats";
+import { WatchlistCard } from "@/components/sets/WatchlistCard";
+import type { CuratedSet, CuratedItem } from "@/lib/types/curated";
+import curatedSetsData from "@/lib/data/lego-curated-sets.json";
+import { loadAllCuratedScores } from "@/lib/db/curated-sets";
+import { computeCompositeScore } from "@/lib/domain/curated-score";
 
 export const revalidate = 300;
+
+const curatedSets = curatedSetsData as CuratedSet[];
+
+async function getTopPicks(): Promise<CuratedItem[]> {
+  const setNumbers = curatedSets.map((s) => s.setNumber);
+  const scoresMap = await loadAllCuratedScores(setNumbers);
+  const maxVoteCount = Math.max(
+    ...Array.from(scoresMap.values()).map((s) => s.voteCount),
+    1
+  );
+  const items: CuratedItem[] = curatedSets.map((set) => {
+    const scores = scoresMap.get(set.setNumber) ?? {
+      setNumber: set.setNumber,
+      bricklinkSoldCount6mo: null,
+      retirementMonthsRemaining: null,
+      currentPrice: null,
+      voteCount: 0,
+      lastRefreshed: "",
+    };
+    const compositeScore = computeCompositeScore({
+      retirementMonthsRemaining: scores.retirementMonthsRemaining,
+      retired: set.retired,
+      theme: set.theme,
+      bricklinkSoldCount6mo: scores.bricklinkSoldCount6mo,
+      currentPrice: scores.currentPrice,
+      originalMsrp: set.originalMsrp,
+      hasExclusiveMinifigs: set.hasExclusiveMinifigs,
+      voteCount: scores.voteCount,
+      maxVoteCount,
+    });
+    return { set, scores, compositeScore };
+  });
+  return items
+    .sort((a, b) => b.compositeScore.total - a.compositeScore.total)
+    .slice(0, 5);
+}
 
 const PILLARS = [
   {
@@ -29,6 +70,8 @@ const PILLARS = [
 ];
 
 export default async function HomePage() {
+  const topPicks = await getTopPicks();
+
   return (
     <div className="flex flex-col">
       {/* Hero */}
@@ -45,6 +88,28 @@ export default async function HomePage() {
       <section className="bg-sunshine-yellow border-b-2 border-jet-black px-4 py-3">
         <div className="mx-auto max-w-[1240px] flex justify-center md:justify-start">
           <HeroStats />
+        </div>
+      </section>
+
+      {/* Top picks */}
+      <section className="py-16 px-4 bg-paper border-b-2 border-jet-black">
+        <div className="mx-auto max-w-[1240px]">
+          <div className="flex items-end justify-between mb-8 gap-4">
+            <div>
+              <p className="type-eyebrow text-slate-500 mb-2">Curated watchlist</p>
+              <h2 className="type-h1 text-jet-black">Top picks right now.</h2>
+            </div>
+            <Link href="/watchlist" className="shrink-0">
+              <BrickButton variant="ghost" size="sm">
+                View all →
+              </BrickButton>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            {topPicks.map((item) => (
+              <WatchlistCard key={item.set.setNumber} item={item} />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -81,11 +146,18 @@ export default async function HomePage() {
           <p className="type-body-lg text-slate-700 mb-8">
             No sign-up. No paywall. Informational tools only.
           </p>
-          <Link href="/set-forecast">
-            <BrickButton variant="primary" size="lg">
-              Open Set Forecast
-            </BrickButton>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/watchlist">
+              <BrickButton variant="primary" size="lg">
+                Open Watchlist
+              </BrickButton>
+            </Link>
+            <Link href="/set-forecast">
+              <BrickButton variant="ghost" size="lg">
+                Full Set Forecast
+              </BrickButton>
+            </Link>
+          </div>
           <div className="mt-10 rounded-card border-2 border-slate-100 bg-pure-white px-5 py-4 text-left type-body-sm text-slate-500 leading-relaxed max-w-2xl mx-auto">
             LegoFuture provides educational market-analysis tools for informational
             purposes only. It does not provide personalized financial, investment,

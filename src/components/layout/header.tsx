@@ -8,6 +8,7 @@ import { BrickButton } from "@/components/ui/BrickButton";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/watchlist", label: "Watchlist" },
   { href: "/set-forecast", label: "Set Forecast" },
   { href: "/set-forecast/methodology", label: "Methodology" },
 ];

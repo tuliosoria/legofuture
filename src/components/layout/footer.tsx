@@ -31,6 +31,11 @@ export function Footer() {
               <p className="type-eyebrow text-slate-500 mb-3">Tools</p>
               <ul className="space-y-2">
                 <li>
+                  <Link href="/watchlist" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
+                    Watchlist
+                  </Link>
+                </li>
+                <li>
                   <Link href="/set-forecast" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
                     Set Forecast
                   </Link>
