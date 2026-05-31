@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
   const themeFilter = sp.get("theme") ?? "";
   const statusFilter = sp.get("status") ?? "all";
   const sort = sp.get("sort") ?? "name";
+  const modeParam = sp.get("mode") ?? "investment";
   const includeOrphans = sp.get("includeOrphans") === "1";
 
   if (!Number.isInteger(pageRaw) || pageRaw < 1) {
@@ -67,6 +68,9 @@ export async function GET(request: NextRequest) {
 
   // --- server-side filtering -----------------------------------------------
   let filtered = catalog.filter((set: LegoSet) => {
+    if (modeParam === "investment" && set.investmentUniverse !== "InvestableSet") return false;
+    if (modeParam === "tracker" && set.investmentUniverse !== "RetiredTracker") return false;
+    if (modeParam === "collector" && set.investmentUniverse !== "CollectorCatalog") return false;
     if (q && !matchesFreeText(set, q)) return false;
     if (themeFilter && set.theme !== themeFilter) return false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

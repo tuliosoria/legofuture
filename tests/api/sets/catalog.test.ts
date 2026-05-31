@@ -39,6 +39,7 @@ function makeSet(id: string, overrides: Partial<LegoSet> = {}): LegoSet {
     imageUrl: "",
     slug: `set-${id}`,
     pricingProviderCount: 1,
+    investmentUniverse: "InvestableSet" as const,
     ...overrides,
   };
 }
@@ -165,5 +166,49 @@ describe("GET /api/sets/catalog", () => {
   it("returns 400 for invalid page number", async () => {
     const res = await GET(makeRequest({ page: "0" }));
     expect(res.status).toBe(400);
+  });
+
+  it("mode=investment filters to InvestableSet universe", async () => {
+    const sets = [
+      makeSet("1", { investmentUniverse: "InvestableSet" }),
+      makeSet("2", { investmentUniverse: "CollectorCatalog" }),
+      makeSet("3", { investmentUniverse: "DataIssue" }),
+      makeSet("4", { investmentUniverse: "RetiredTracker" }),
+    ];
+    mockLoadStoredCatalog.mockResolvedValue(sets);
+
+    const res = await GET(makeRequest({ mode: "investment" }));
+    const body = await res.json();
+
+    expect(body.total).toBe(1);
+    expect(body.items[0].product.id).toBe("1");
+  });
+
+  it("mode=tracker filters to RetiredTracker universe", async () => {
+    const sets = [
+      makeSet("1", { investmentUniverse: "InvestableSet" }),
+      makeSet("2", { investmentUniverse: "RetiredTracker" }),
+    ];
+    mockLoadStoredCatalog.mockResolvedValue(sets);
+
+    const res = await GET(makeRequest({ mode: "tracker" }));
+    const body = await res.json();
+
+    expect(body.total).toBe(1);
+    expect(body.items[0].product.id).toBe("2");
+  });
+
+  it("mode=collector filters to CollectorCatalog universe", async () => {
+    const sets = [
+      makeSet("1", { investmentUniverse: "InvestableSet" }),
+      makeSet("2", { investmentUniverse: "CollectorCatalog" }),
+    ];
+    mockLoadStoredCatalog.mockResolvedValue(sets);
+
+    const res = await GET(makeRequest({ mode: "collector" }));
+    const body = await res.json();
+
+    expect(body.total).toBe(1);
+    expect(body.items[0].product.id).toBe("2");
   });
 });
