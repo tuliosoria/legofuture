@@ -121,6 +121,10 @@ export async function GET(request: NextRequest) {
     recommendation,
     scenario,
     sort,
+    pageMode: "Investment Screener",
+    screenerSignalFilter: "all",
+    liquidityTier: "all",
+    minNetGain: 0,
   };
   const { results, aliases } = runFilterPipeline(items, filterState);
 
