@@ -31,8 +31,8 @@ export function Footer() {
               <p className="type-eyebrow text-slate-500 mb-3">Tools</p>
               <ul className="space-y-2">
                 <li>
-                  <Link href="/watchlist" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
-                    Watchlist
+                  <Link href="/buying-list" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
+                    Buying List
                   </Link>
                 </li>
                 <li>
@@ -41,7 +41,7 @@ export function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/set-forecast/methodology" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
+                  <Link href="/contact#methodology" className="type-body-sm text-slate-300 hover:text-paper hover:underline transition-colors">
                     Methodology
                   </Link>
                 </li>
@@ -53,7 +53,6 @@ export function Footer() {
               <p className="type-eyebrow text-slate-500 mb-3">Legal</p>
               <ul className="space-y-2">
                 {[
-                  { href: "/legal", label: "Legal Overview" },
                   { href: "/terms", label: "Terms of Use" },
                   { href: "/privacy", label: "Privacy Policy" },
                   { href: "/privacy-rights", label: "Privacy Rights" },
@@ -75,6 +74,9 @@ export function Footer() {
             </p>
             <p className="mt-1 type-body-sm text-slate-500">
               LEGO is a trademark of the LEGO Group. LegoFuture is not affiliated with or endorsed by the LEGO Group.
+            </p>
+            <p className="mt-1 type-body-sm text-slate-500">
+              LegoFuture is an eBay Partner Network affiliate; we earn commissions on qualifying purchases.
             </p>
           </div>
         </div>
