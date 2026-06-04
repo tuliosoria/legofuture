@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
         pathname: "/media/sets/**",
       },
       { protocol: "https", hostname: "www.pricecharting.com" },
+      { protocol: "https", hostname: "img.bricklink.com" },
     ],
   },
   async redirects() {
@@ -19,6 +20,11 @@ const nextConfig: NextConfig = {
       { source: "/sealed-forecast", destination: "/set-forecast", permanent: true },
       { source: "/sealed-forecast/:path*", destination: "/set-forecast/:path*", permanent: true },
       { source: "/api/sealed/:path*", destination: "/api/sets/:path*", permanent: true },
+      // MVP rebuild redirects (2026-06-03)
+      { source: "/watchlist", destination: "/buying-list", permanent: true },
+      { source: "/set-forecast/methodology", destination: "/contact#methodology", permanent: true },
+      { source: "/set/:slug*", destination: "/set-forecast/:slug*", permanent: true },
+      { source: "/legal", destination: "/terms", permanent: true },
     ];
   },
   async headers() {

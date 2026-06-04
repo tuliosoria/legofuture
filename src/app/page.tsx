@@ -1,180 +1,155 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { TrendingUp, Package, BarChart3 } from "lucide-react";
-import { BrickHero } from "@/components/ui/BrickHero";
+import { LEGO_SETS } from "@/lib/data/sets";
 import { BrickCard } from "@/components/ui/BrickCard";
 import { BrickButton } from "@/components/ui/BrickButton";
-import { HeroStats } from "@/components/HeroStats";
-import { WatchlistCard } from "@/components/sets/WatchlistCard";
-import type { CuratedSet, CuratedItem } from "@/lib/types/curated";
-import curatedSetsData from "@/lib/data/lego-curated-sets.json";
-import { loadAllCuratedScores } from "@/lib/db/curated-sets";
-import { computeCompositeScore } from "@/lib/domain/curated-score";
+import { SetCard } from "@/components/sets/SetCard";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
-const curatedSets = curatedSetsData as CuratedSet[];
+export const metadata: Metadata = {
+  title: "LegoFuture — 5-year forecasts for investment-grade LEGO sets",
+  description:
+    "Data-driven 5-year price forecasts for sealed LEGO sets. Monthly buying list, full catalog, scenario modelling — all in one place.",
+};
 
-async function getTopPicks(): Promise<CuratedItem[]> {
-  const setNumbers = curatedSets.map((s) => s.setNumber);
-  const scoresMap = await loadAllCuratedScores(setNumbers);
-  const maxVoteCount = Math.max(
-    ...Array.from(scoresMap.values()).map((s) => s.voteCount),
-    1
-  );
-  const items: CuratedItem[] = curatedSets.map((set) => {
-    const scores = scoresMap.get(set.setNumber) ?? {
-      setNumber: set.setNumber,
-      bricklinkSoldCount6mo: null,
-      retirementMonthsRemaining: null,
-      currentPrice: null,
-      voteCount: 0,
-      lastRefreshed: "",
-    };
-    const compositeScore = computeCompositeScore({
-      retirementMonthsRemaining: scores.retirementMonthsRemaining,
-      retired: set.retired,
-      theme: set.theme,
-      bricklinkSoldCount6mo: scores.bricklinkSoldCount6mo,
-      currentPrice: scores.currentPrice,
-      originalMsrp: set.originalMsrp,
-      hasExclusiveMinifigs: set.hasExclusiveMinifigs,
-      voteCount: scores.voteCount,
-      maxVoteCount,
-    });
-    return { set, scores, compositeScore };
-  });
-  return items
-    .sort((a, b) => b.compositeScore.total - a.compositeScore.total)
-    .slice(0, 5);
-}
-
-const PILLARS = [
-  {
-    accent: "blue" as const,
-    icon: <TrendingUp className="w-6 h-6" strokeWidth={1.75} aria-hidden />,
-    title: "Live pricing from PriceCharting",
-    desc: "Current prices sourced directly from PriceCharting, with a bundled fallback snapshot. Always fresh, always honest.",
-  },
-  {
-    accent: "red" as const,
-    icon: <Package className="w-6 h-6" strokeWidth={1.75} aria-hidden />,
-    title: "Retired vs current sets",
-    desc: "Supply-constrained retired sets earn a higher base CAGR. We flag retirement status so you can stack the right sets.",
-  },
-  {
-    accent: "green" as const,
-    icon: <BarChart3 className="w-6 h-6" strokeWidth={1.75} aria-hidden />,
-    title: "Five-year ROI projections",
-    desc: "Three scenarios — pessimist, moderate, optimist — give you a range instead of a false-precision single number.",
-  },
-];
-
-export default async function HomePage() {
-  const topPicks = await getTopPicks();
+export default function HomePage() {
+  const topPicks = [...LEGO_SETS].sort((a, b) => b.score - a.score).slice(0, 6);
+  const buyCount = LEGO_SETS.filter((s) => s.signal === "Buy" || s.signal === "Strong Buy").length;
+  const retiringSoon = LEGO_SETS.filter((s) => s.status === "Retiring soon").length;
 
   return (
-    <div className="flex flex-col">
+    <main>
       {/* Hero */}
-      <BrickHero
-        eyebrow="Free · No login required · Educational tools only"
-        title="Forecast every sealed brick."
-        description="Buy / hold / sell signals on 20+ popular sets — Star Wars UCS, Technic, Architecture, Modular Buildings, and more."
-        primaryCta={{ label: "See the forecast", href: "/set-forecast" }}
-        secondaryCta={{ label: "Read the methodology", href: "/set-forecast/methodology" }}
-        accentColor="yellow"
-      />
-
-      {/* Live catalog count */}
-      <section className="bg-sunshine-yellow border-b-2 border-jet-black px-4 py-3">
-        <div className="mx-auto max-w-[1240px] flex justify-center md:justify-start">
-          <HeroStats />
-        </div>
-      </section>
-
-      {/* Top picks */}
-      <section className="py-16 px-4 bg-paper border-b-2 border-jet-black">
-        <div className="mx-auto max-w-[1240px]">
-          <div className="flex items-end justify-between mb-8 gap-4">
-            <div>
-              <p className="type-eyebrow text-slate-500 mb-2">Curated watchlist</p>
-              <h2 className="type-h1 text-jet-black">Top picks right now.</h2>
+      <section className="bg-paper border-b-2 border-jet-black">
+        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-16 md:py-24 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
+          <div>
+            <p className="type-eyebrow text-brick-red mb-3">5-year price forecasts</p>
+            <h1
+              className="type-display"
+              style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
+            >
+              The screener for sealed-LEGO investors.
+            </h1>
+            <p className="type-body-lg text-slate-700 mt-5 max-w-xl">
+              Forecast 5-year returns on {LEGO_SETS.length} investment-grade LEGO sets.
+              Compare against the S&amp;P 500. Spot retirement opportunities before the market does.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-7">
+              <Link href="/buying-list">
+                <BrickButton variant="primary" size="lg">See this month&rsquo;s buying list →</BrickButton>
+              </Link>
+              <Link href="/set-forecast">
+                <BrickButton variant="secondary" size="lg">Browse all forecasts</BrickButton>
+              </Link>
             </div>
-            <Link href="/watchlist" className="shrink-0">
-              <BrickButton variant="ghost" size="sm">
-                View all →
-              </BrickButton>
+          </div>
+          <BrickCard accentTop="red" studStrip className="hidden lg:block">
+            <p className="type-eyebrow text-slate-500 mb-2">Featured</p>
+            <p className="type-h2" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+              {topPicks[0].name}
+            </p>
+            <p className="type-body-sm text-slate-700 mt-2">
+              5yr forecast <strong>${topPicks[0].proj5y.toLocaleString()}</strong> from today&rsquo;s
+              ${topPicks[0].currentPrice.toLocaleString()} · {topPicks[0].signal}
+            </p>
+            <Link
+              href={`/set-forecast/${topPicks[0].id}`}
+              className="type-body-sm text-bright-blue underline mt-3 inline-block"
+            >
+              View forecast →
             </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {topPicks.map((item) => (
-              <WatchlistCard key={item.set.setNumber} item={item} />
-            ))}
-          </div>
+          </BrickCard>
         </div>
       </section>
 
-      {/* Pillars */}
-      <section className="py-20 px-4 bg-paper">
-        <div className="mx-auto max-w-[1240px]">
-          <div className="mb-12">
-            <p className="type-eyebrow text-slate-500 mb-2">How we build the signal</p>
-            <h2 className="type-h1 text-jet-black max-w-lg">Three pillars, one clear signal.</h2>
+      {/* Top picks rail */}
+      <section className="mx-auto max-w-[1240px] px-4 md:px-8 py-16">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <p className="type-eyebrow text-slate-500">This month</p>
+            <h2 className="type-h2 mt-1" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+              Top 6 picks
+            </h2>
           </div>
+          <Link href="/buying-list" className="type-body-sm text-bright-blue underline">
+            See full buying list →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {topPicks.map((s) => (
+            <SetCard key={s.id} set={s} />
+          ))}
+        </div>
+      </section>
+
+      {/* Three-pillar explainer */}
+      <section className="bg-pure-white border-y-2 border-jet-black">
+        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-16">
+          <h2
+            className="type-h2 mb-8 text-center"
+            style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
+          >
+            How LegoFuture works
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PILLARS.map((p) => (
-              <BrickCard
-                key={p.title}
-                as="article"
-                accentTop={p.accent}
-                studStrip
-              >
-                <div className="w-10 h-10 rounded-card border-2 border-jet-black flex items-center justify-center mb-4">
-                  {p.icon}
-                </div>
-                <h3 className="type-h3 text-jet-black mb-2">{p.title}</h3>
-                <p className="type-body text-slate-700 leading-relaxed">{p.desc}</p>
-              </BrickCard>
-            ))}
+            <BrickCard accentTop="blue">
+              <p className="type-eyebrow text-bright-blue mb-2">01</p>
+              <h3 className="type-h4" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+                Sealed-set focus
+              </h3>
+              <p className="type-body-sm text-slate-700 mt-2">
+                We track only sealed, factory-new LEGO sets — the segment where retirement supply shocks
+                drive consistent appreciation.
+              </p>
+            </BrickCard>
+            <BrickCard accentTop="yellow">
+              <p className="type-eyebrow text-slate-700 mb-2">02</p>
+              <h3 className="type-h4" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+                Composite scoring
+              </h3>
+              <p className="type-body-sm text-slate-700 mt-2">
+                Each set is scored 0–100 across forecast ROI, retirement status, community demand, and
+                market liquidity — then mapped to a clear buy/watch/hold signal.
+              </p>
+            </BrickCard>
+            <BrickCard accentTop="green">
+              <p className="type-eyebrow text-pure-green mb-2">03</p>
+              <h3 className="type-h4" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+                Benchmarked vs. S&amp;P 500
+              </h3>
+              <p className="type-body-sm text-slate-700 mt-2">
+                Every forecast is overlaid against a 10.5% S&amp;P 500 baseline so you can see whether a
+                given set actually beats the market.
+              </p>
+            </BrickCard>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 px-4 bg-slate-50">
-        <div className="mx-auto max-w-[1240px] text-center max-w-2xl mx-auto">
-          <h2 className="type-h1 text-jet-black mb-4">Ready to build your position?</h2>
-          <p className="type-body-lg text-slate-700 mb-8">
-            No sign-up. No paywall. Informational tools only.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/watchlist">
-              <BrickButton variant="primary" size="lg">
-                Open Watchlist
-              </BrickButton>
-            </Link>
-            <Link href="/set-forecast">
-              <BrickButton variant="ghost" size="lg">
-                Full Set Forecast
-              </BrickButton>
-            </Link>
-          </div>
-          <div className="mt-10 rounded-card border-2 border-slate-100 bg-pure-white px-5 py-4 text-left type-body-sm text-slate-500 leading-relaxed max-w-2xl mx-auto">
-            LegoFuture provides educational market-analysis tools for informational
-            purposes only. It does not provide personalized financial, investment,
-            tax, or legal advice. LEGO® is a trademark of the LEGO Group.
-            LegoFuture is not affiliated with or endorsed by the LEGO Group.
-            Review our{" "}
-            <Link href="/terms" className="text-bright-blue hover:underline">
-              Terms of Use
-            </Link>
-            {" "}and{" "}
-            <Link href="/privacy" className="text-bright-blue hover:underline">
-              Privacy Policy
-            </Link>
-            {" "}before relying on this site.
-          </div>
+      {/* Stats strip */}
+      <section className="bg-jet-black text-paper">
+        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <Stat label="Sets tracked" value={LEGO_SETS.length.toString()} />
+          <Stat label="Buy signals" value={buyCount.toString()} />
+          <Stat label="Retiring soon" value={retiringSoon.toString()} />
+          <Stat label="Forecast horizon" value="5yr" />
         </div>
       </section>
+    </main>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        className="type-h1 text-sunshine-yellow"
+        style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
+      >
+        {value}
+      </p>
+      <p className="type-body-sm text-slate-300 mt-1">{label}</p>
     </div>
   );
 }

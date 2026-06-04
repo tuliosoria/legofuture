@@ -1,102 +1,38 @@
 import type { Metadata } from "next";
-import { loadStoredCatalog } from "@/lib/db/lego-search";
-import { getPricing } from "@/lib/domain/lego-estimate";
-import { computeForecast } from "@/lib/domain/lego-forecast";
-import { loadBaseline } from "@/lib/domain/lego-baseline";
-import { ForecastDashboard } from "@/components/sets/ForecastDashboard";
-import { HeroStats } from "@/components/HeroStats";
+import { LEGO_SETS } from "@/lib/data/sets";
+import { ForecastFilters } from "@/components/sets/ForecastFilters";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "LEGO Investment Screener | LegoFuture",
+  title: "Set Forecast — LegoFuture",
   description:
-    "Screen active and retiring-soon LEGO sets using retirement timing, resale liquidity, demand signals, and estimated net profit after fees.",
+    "Browse 5-year price forecasts for 50 investment-grade LEGO sets. Filter by theme, signal, and status.",
 };
 
-/**
- * SSR cap for orphan sets. Prevents Lambda timeout when includeOrphans=true
- * until GSI-based pagination is available (Plan C / TODO(GSI)).
- * The real catalog total is resolved client-side via /api/sets/catalog.
- * @deprecated Migrate to the paginated /api/sets/catalog endpoint.
- */
-const SSR_ORPHAN_CAP = 200;
-
-/** Number of items to compute forecasts for server-side (fast first paint). */
-const SSR_FIRST_PAGE = 60;
-
-/** Fallback pricing when no PriceCharting data exists. */
-const EMPTY_PRICING = {
-  newPrice: null,
-  cibPrice: null,
-  loosePrice: null,
-  salesVolume: null,
-  lastFetched: "",
-} as const;
-
-export default async function SetForecastPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ all?: string }> | { all?: string };
-}) {
-  const params = (await Promise.resolve(searchParams)) ?? {};
-  const includeOrphans = params.all === "1";
-
-  // Load catalog — orphan scan capped to SSR_ORPHAN_CAP for fast paint.
-  // The client refines the real total via /api/sets/catalog (Plan C).
-  const catalog = await loadStoredCatalog({
-    includeOrphans,
-    orphanCap: includeOrphans ? SSR_ORPHAN_CAP : undefined,
-  });
-
-  // Sort alphabetically so the SSR first page is deterministic and matches
-  // the default sort applied by /api/sets/catalog.
-  catalog.sort((a, b) => a.name.localeCompare(b.name));
-
-  const initialTotal = catalog.length;
-  const initialWithPricing = catalog.reduce(
-    (n, set) => n + ((set.pricingProviderCount ?? 0) >= 1 ? 1 : 0),
-    0,
-  );
-  const firstPage = catalog.slice(0, SSR_FIRST_PAGE);
-
-  const baseline = await loadBaseline();
-  const initialItems = await Promise.all(
-    firstPage.map(async (product) => {
-      const pricing = await getPricing(product);
-      const forecast = computeForecast(product, pricing ?? EMPTY_PRICING, baseline);
-      return { product, forecast };
-    })
-  );
-
+export default function SetForecastPage() {
   return (
-    <main>
-      {/* Page header */}
-      <div className="bg-pure-white border-b-2 border-jet-black">
-        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
-          <p className="type-eyebrow text-slate-500 mb-2">Investment screener</p>
-          <h1 className="type-display-2 text-jet-black mb-3">
-            Find investable LEGO sets before retirement.
-          </h1>
-          <p className="type-body-lg text-slate-700 max-w-xl">
-            Screen active and retiring-soon boxed LEGO sets using retirement timing,
-            resale liquidity, demand signals, and estimated net profit after fees.
-          </p>
-          <p className="mt-2 type-body-sm text-slate-500">
-            Default results exclude keychains, books, plushies, accessories, and suspicious pricing outliers.
-          </p>
-          <div className="mt-4">
-            <HeroStats />
-          </div>
-        </div>
+    <main className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
+      <div className="mb-8">
+        <p className="type-eyebrow text-slate-500">Forecast catalog</p>
+        <h1
+          className="type-h1 mt-2"
+          style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
+        >
+          Set Forecast
+        </h1>
+        <p className="type-body text-slate-700 mt-3 max-w-2xl">
+          5-year price forecasts for {LEGO_SETS.length} hand-picked LEGO sets across modular,
+          UCS, Icons, Technic, and more. Filter and sort to find your edge.
+        </p>
       </div>
-      <ForecastDashboard
-        initialItems={initialItems}
-        initialTotal={initialTotal}
-        initialWithPricing={initialWithPricing}
-        includeOrphans={includeOrphans}
-      />
+
+      <ForecastFilters sets={LEGO_SETS} />
+
+      <p className="type-caption text-slate-500 mt-10 leading-relaxed">
+        Educational forecasts only — not financial advice. LEGO is a trademark of the LEGO Group;
+        LegoFuture is not affiliated with or endorsed by the LEGO Group.
+      </p>
     </main>
   );
 }
