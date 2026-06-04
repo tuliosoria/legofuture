@@ -42,3 +42,4 @@ lego-ml/__pycache__/
 # SAM CLI build artifacts
 infra/lego-ml-retrainer/.aws-sam/
 .cache/
+models/
