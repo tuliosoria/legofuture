@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LEGO_SETS } from "@/lib/data/sets";
+import { loadLiveCuratedCatalog } from "@/lib/data/live-catalog";
 import { BuyingListRow } from "@/components/sets/BuyingListRow";
 import { BrickCard } from "@/components/ui/BrickCard";
 
@@ -12,8 +12,9 @@ export const metadata: Metadata = {
     "Top 10 retired LEGO sets ranked by composite score. Permanently capped supply meeting compounding collector demand — the cleanest LEGO investment thesis.",
 };
 
-export default function RetiredBuyingListPage() {
-  const picks = [...LEGO_SETS]
+export default async function RetiredBuyingListPage() {
+  const allSets = await loadLiveCuratedCatalog();
+  const picks = [...allSets]
     .filter((s) => s.status === "Retired")
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
