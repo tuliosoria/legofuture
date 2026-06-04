@@ -108,12 +108,15 @@ class TestBuildFeatureMatrix:
         assert "target_3y" in df.columns
         assert "target_5y" in df.columns
 
-    def test_synthetic_targets_match_10_pct_growth(self):
+    def test_record_without_history_gets_nan_targets(self):
+        # Bug 1 fix: targets now come from real HISTORY rows, not a synthetic
+        # constant. A record with no `history` field must produce NaN targets
+        # (and be dropped at train time) instead of a hard-coded 10%/yr.
         df = build_feature_matrix([SAMPLE_RECORD])
-        # ln(1.10^N) for N=1,3,5
-        assert df["target_1y"].iloc[0] == pytest.approx(math.log(1.10), rel=1e-5)
-        assert df["target_3y"].iloc[0] == pytest.approx(3 * math.log(1.10), rel=1e-5)
-        assert df["target_5y"].iloc[0] == pytest.approx(5 * math.log(1.10), rel=1e-5)
+        assert math.isnan(df["target_1y"].iloc[0])
+        assert math.isnan(df["target_3y"].iloc[0])
+        assert math.isnan(df["target_5y"].iloc[0])
+        assert df["sample_weight"].iloc[0] == 0.0
 
     def test_empty_records_returns_empty_df(self):
         df = build_feature_matrix([])
