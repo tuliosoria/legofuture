@@ -12,42 +12,79 @@ import {
   YAxis,
 } from "recharts";
 import type { LegoSet } from "@/lib/domain/lego-set";
+import type { LiveHistoryPoint } from "@/lib/data/live-catalog";
 import { SP500_ANNUAL } from "@/lib/domain/forecast";
 
 interface Props {
   set: LegoSet;
+  history?: LiveHistoryPoint[];
 }
 
 interface Point {
   t: number;
   history?: number;
+  historySynthetic?: number;
   forecast?: number;
   sp500?: number;
   bandLow?: number;
   bandHigh?: number;
 }
 
-function parseMomentumAnnual(momentum: string): number {
+function parseMomentumAnnual(momentum: string | null | undefined): number {
   // "+18% 12mo" → 0.18
+  if (!momentum) return 0.05;
   const m = momentum.match(/(-?\d+(?:\.\d+)?)\s*%/);
   if (!m) return 0.05;
   return Number(m[1]) / 100;
 }
 
-function buildSeries(set: LegoSet): Point[] {
+function buildHistoryFromReal(
+  set: LegoSet,
+  history: LiveHistoryPoint[]
+): Point[] {
+  const now = Date.now();
+  const msPerYear = 365.25 * 24 * 3600 * 1000;
+  const sorted = [...history]
+    .filter((p) => Number.isFinite(p.price) && p.price > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const out: Point[] = [];
+  for (const p of sorted) {
+    const t = (new Date(p.date).getTime() - now) / msPerYear;
+    if (t > 0) continue;
+    if (p.source === "synthetic_backfill") {
+      out.push({ t, historySynthetic: Math.round(p.price) });
+    } else {
+      out.push({ t, history: Math.round(p.price) });
+    }
+  }
+  return out;
+}
+
+function buildHistoryFromMomentum(set: LegoSet): Point[] {
   const annualBack = parseMomentumAnnual(set.momentum);
   const out: Point[] = [];
-  // History: −3yr → 0, monthly (37 points). Backcast: price_t = currentPrice / (1+r)^|t|
   for (let m = -36; m <= 0; m++) {
     const yrs = m / 12;
     const noise = 1 + 0.015 * Math.sin(m * 0.9);
     const price = (set.currentPrice / Math.pow(1 + annualBack, -yrs)) * noise;
-    out.push({ t: yrs, history: Math.round(price) });
+    out.push({ t: yrs, historySynthetic: Math.round(price) });
   }
+  return out;
+}
+
+function buildSeries(set: LegoSet, history?: LiveHistoryPoint[]): Point[] {
+  const realCount = (history ?? []).filter(
+    (p) => p.source === "real" && Number.isFinite(p.price) && p.price > 0
+  ).length;
+  const historyPoints =
+    history && realCount >= 2
+      ? buildHistoryFromReal(set, history)
+      : buildHistoryFromMomentum(set);
   // Anchor: forecast starts at currentPrice at t=0
   const baseRatio = set.proj5y / set.currentPrice;
   const bearRatio = set.bear / set.currentPrice;
   const bullRatio = set.bull / set.currentPrice;
+  const forecastPoints: Point[] = [];
   for (let m = 0; m <= 60; m++) {
     const yrs = m / 12;
     const forecast = set.currentPrice * Math.pow(baseRatio, yrs / 5);
@@ -62,16 +99,21 @@ function buildSeries(set: LegoSet): Point[] {
       bandHigh: Math.round(bandHigh),
     };
     if (m === 0) point.history = set.currentPrice;
-    out.push(point);
+    forecastPoints.push(point);
   }
-  return out;
+  return [...historyPoints, ...forecastPoints];
 }
 
 const fmtUSD = (n: number) => `$${n.toLocaleString()}`;
 const fmtYear = (t: number) => (t === 0 ? "Today" : t > 0 ? `+${t.toFixed(0)}y` : `${t.toFixed(0)}y`);
 
-export function MvpForecastChart({ set }: Props) {
-  const data = buildSeries(set);
+export function MvpForecastChart({ set, history }: Props) {
+  const data = buildSeries(set, history);
+  const realCount = (history ?? []).filter((p) => p.source === "real").length;
+  const usingReal = realCount >= 2;
+  const subtitle = usingReal
+    ? `Real price history (${realCount} points) · today's price · 5yr forecast vs. S&P 500.`
+    : "3yr estimated history · today's price · 5yr forecast vs. S&P 500.";
   return (
     <div className="bg-pure-white border-2 border-jet-black rounded-card shadow-click p-4">
       <h2
@@ -80,9 +122,7 @@ export function MvpForecastChart({ set }: Props) {
       >
         Price trajectory
       </h2>
-      <p className="type-body-sm text-slate-500 mb-3 px-2">
-        3yr estimated history · today&rsquo;s price · 5yr forecast vs. S&amp;P 500.
-      </p>
+      <p className="type-body-sm text-slate-500 mb-3 px-2">{subtitle}</p>
       <div className="h-80 w-full">
         <ResponsiveContainer>
           <ComposedChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
@@ -129,8 +169,20 @@ export function MvpForecastChart({ set }: Props) {
               stroke="#006DB7"
               strokeWidth={2.5}
               dot={false}
-              name="Estimated history"
+              name={usingReal ? "Price history" : "Today"}
               isAnimationActive={false}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="historySynthetic"
+              stroke="#006DB7"
+              strokeWidth={2}
+              strokeDasharray="4 3"
+              dot={false}
+              name={usingReal ? "Estimated history" : "Estimated history"}
+              isAnimationActive={false}
+              connectNulls
             />
             <Line
               type="monotone"

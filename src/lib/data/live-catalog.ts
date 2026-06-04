@@ -131,7 +131,7 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
     bear: Math.round(bear),
     bull: Math.round(bull),
     pieces: ddbProduct?.pieceCount ?? curated.pieces,
-    momentum: momentum as MvpLegoSet["momentum"],
+    momentum: (momentum ?? curated.momentum) as MvpLegoSet["momentum"],
     thesis: curated.thesis,
   };
 }

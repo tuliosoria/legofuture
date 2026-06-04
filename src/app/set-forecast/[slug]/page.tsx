@@ -37,7 +37,6 @@ export default async function SetDetailPage({ params }: Params) {
     loadLiveHistory(slug),
   ]);
   if (!set) notFound();
-  void history;
 
   return (
     <main className="mx-auto max-w-[1100px] px-4 md:px-8 py-8">
@@ -54,7 +53,7 @@ export default async function SetDetailPage({ params }: Params) {
         <DetailHero set={set} />
         <WhyThisRating set={set} />
         <ScenarioCards set={set} />
-        <MvpForecastChart set={set} />
+        <MvpForecastChart set={set} history={history} />
         <LiveMarketPanel set={set} />
         <ThesisBlock set={set} />
       </div>

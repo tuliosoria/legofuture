@@ -44,8 +44,9 @@ export function retirementDots(set: Pick<LegoSet, "status">): 1 | 2 | 3 | 4 | 5 
   return 2;
 }
 
-/** Community-strength dots from communityScore (0–100). */
+/** Community-strength dots from communityScore (0–100); null → 1. */
 export function communityDots(set: Pick<LegoSet, "communityScore">): 1 | 2 | 3 | 4 | 5 {
+  if (set.communityScore == null) return 1;
   return dotsFromBuckets(set.communityScore, [50, 65, 75, 85]);
 }
 
