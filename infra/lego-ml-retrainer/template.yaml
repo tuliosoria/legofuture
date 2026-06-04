@@ -24,7 +24,7 @@ Resources:
   RetrainerFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      Dockerfile: Dockerfile
+      Dockerfile: infra/lego-ml-retrainer/Dockerfile
       DockerContext: ../..
       DockerTag: latest
     Properties:
@@ -36,7 +36,7 @@ Resources:
       MemorySize: 2048
       Timeout: 900
       Architectures:
-        - x86_64
+        - arm64
       Environment:
         Variables:
           DYNAMODB_TABLE: !Ref DynamoTableName
