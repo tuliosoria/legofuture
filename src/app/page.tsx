@@ -36,8 +36,8 @@ export default function HomePage() {
               Compare against the S&amp;P 500. Spot retirement opportunities before the market does.
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
-              <Link href="/buying-list">
-                <BrickButton variant="primary" size="lg">See this month&rsquo;s buying list →</BrickButton>
+              <Link href="/buying-list/retired">
+                <BrickButton variant="primary" size="lg">See this month&rsquo;s buying lists →</BrickButton>
               </Link>
               <Link href="/set-forecast">
                 <BrickButton variant="secondary" size="lg">Browse all forecasts</BrickButton>
@@ -72,8 +72,8 @@ export default function HomePage() {
               Top 6 picks
             </h2>
           </div>
-          <Link href="/buying-list" className="type-body-sm text-bright-blue underline">
-            See full buying list →
+          <Link href="/buying-list/retired" className="type-body-sm text-bright-blue underline">
+            See full buying lists →
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
