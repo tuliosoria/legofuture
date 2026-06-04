@@ -4,7 +4,7 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import { SignalPill } from "@/components/ui/SignalPill";
 import { StatusTag } from "@/components/ui/StatusTag";
 import type { LegoSet } from "@/lib/domain/lego-set";
-import { annualRoiLabel, brickLinkImageUrl, ebayUrl, roiPercent } from "@/lib/domain/forecast";
+import { annualRoiLabel, brickLinkImageUrl, ebayUrl, legoStoreUrl, roiPercent } from "@/lib/domain/forecast";
 
 interface Props {
   set: LegoSet;
@@ -24,7 +24,7 @@ export function BuyingListRow({ set, rank }: Props) {
           >
             {rank}
           </div>
-          <div className="relative h-24 w-32 shrink-0 bg-slate-50 rounded-chip overflow-hidden border border-slate-100">
+          <div className="relative h-24 w-32 shrink-0 bg-pure-white rounded-chip overflow-hidden border border-slate-200">
             <Image
               src={brickLinkImageUrl(set)}
               alt={set.name}
@@ -72,6 +72,16 @@ export function BuyingListRow({ set, rank }: Props) {
           >
             Check eBay →
           </a>
+          {set.status !== "Retired" && (
+            <a
+              href={legoStoreUrl(set)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-brick-red text-pure-white px-3 py-1.5 type-body-sm font-medium hover:-translate-x-px hover:-translate-y-px hover:shadow-click transition-all"
+            >
+              Buy on LEGO.com →
+            </a>
+          )}
         </div>
       </div>
     </BrickCard>

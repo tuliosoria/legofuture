@@ -24,7 +24,7 @@ export function SetCard({ set }: Props) {
           <SignalPill signal={set.signal} size="sm" />
         </div>
 
-        <div className="relative aspect-[4/3] w-full bg-slate-50 rounded-chip overflow-hidden mb-3 border border-slate-100">
+        <div className="relative aspect-[4/3] w-full bg-pure-white rounded-chip overflow-hidden mb-3 border border-slate-200">
           <Image
             src={brickLinkImageUrl(set)}
             alt={set.name}

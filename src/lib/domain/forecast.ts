@@ -90,3 +90,22 @@ export function brickLinkUrl(set: Pick<LegoSet, "setNumber">): string {
 export function brickLinkImageUrl(set: Pick<LegoSet, "setNumber">): string {
   return `https://img.bricklink.com/ItemImage/SN/0/${set.setNumber}-1.png`;
 }
+
+/**
+ * Official LEGO.com product page URL.
+ *
+ * Pattern: `https://www.lego.com/en-us/product/lego-{kebab-name}-{setNumber}`
+ * — e.g. Titanic #10294 → `lego-titanic-10294`. Only meaningful for sets
+ * still in production (LEGO.com 404s for retired sets). Callers should
+ * gate by `set.status !== "Retired"`.
+ */
+export function legoStoreUrl(set: Pick<LegoSet, "name" | "setNumber">): string {
+  const slug = set.name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `https://www.lego.com/en-us/product/lego-${slug}-${set.setNumber}`;
+}

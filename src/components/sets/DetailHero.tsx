@@ -8,6 +8,7 @@ import {
   brickLinkImageUrl,
   brickLinkUrl,
   ebayUrl,
+  legoStoreUrl,
   roiPercent,
 } from "@/lib/domain/forecast";
 
@@ -79,11 +80,25 @@ export function DetailHero({ set }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          {set.status !== "Retired" && (
+            <a
+              href={legoStoreUrl(set)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-brick-red text-pure-white px-4 py-2 type-body-sm font-semibold hover:-translate-x-px hover:-translate-y-px hover:shadow-click transition-all"
+            >
+              Buy on LEGO.com →
+            </a>
+          )}
           <a
             href={ebayUrl(set)}
             target="_blank"
             rel="noopener nofollow noreferrer sponsored"
-            className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-brick-red text-pure-white px-4 py-2 type-body-sm font-semibold hover:-translate-x-px hover:-translate-y-px hover:shadow-click transition-all"
+            className={`inline-flex items-center justify-center rounded-chip border-2 border-jet-black px-4 py-2 type-body-sm font-semibold transition-all ${
+              set.status === "Retired"
+                ? "bg-brick-red text-pure-white hover:-translate-x-px hover:-translate-y-px hover:shadow-click"
+                : "bg-pure-white hover:bg-sunshine-yellow"
+            }`}
           >
             Check eBay listings →
           </a>

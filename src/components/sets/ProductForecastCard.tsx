@@ -65,7 +65,7 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
         className="h-full flex flex-col gap-0 transition-all duration-[120ms] group-hover:-translate-y-px group-hover:shadow-click-lg"
       >
         {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-slate-50 -mx-4 -mt-4 mb-4 border-b-2 border-jet-black">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-pure-white -mx-4 -mt-4 mb-4 border-b-2 border-jet-black">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
