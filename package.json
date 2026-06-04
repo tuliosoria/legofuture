@@ -18,6 +18,7 @@
     "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
     "sync:pc-history": "node --env-file=.env.local scripts/scrape-pricecharting-history.mjs",
     "sync:history-snapshot": "node --env-file=.env.local scripts/backfill-current-month-history.mjs",
+    "sync:history-synthesise": "node --env-file=.env.local scripts/synthesise-sparse-history.mjs",
     "sync:trends": "node --env-file=.env.local scripts/sync-google-trends.mjs",
     "sync:bl-validate": "node --env-file=.env.local scripts/validate-bricklink.mjs",
     "setup:ddb": "bash scripts/setup-dynamodb.sh",
