@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { BrickButton } from "@/components/ui/BrickButton";
 
 const NAV_LINKS = [
-  { href: "/buying-list", label: "Buying List" },
+  { href: "/buying-list/retired", label: "Retired Buying List" },
+  { href: "/buying-list/non-retired", label: "Non-Retired Buying List" },
   { href: "/set-forecast", label: "Set Forecast" },
   { href: "/contact", label: "Contact" },
 ];
