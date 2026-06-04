@@ -28,8 +28,8 @@ export interface LegoSet {
   confidence: 1 | 2 | 3 | 4 | 5;
   confLabel: LegoSetConfLabel;
   pieces: number;
-  communityScore: number;
-  momentum: string;
+  communityScore: number | null;
+  momentum: string | null;
   liquidity: string;
   priceAgreement: string;
   thesis: string;

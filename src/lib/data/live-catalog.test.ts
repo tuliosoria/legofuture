@@ -113,7 +113,7 @@ describe("toMvpLegoSet", () => {
     expect(out.momentum).toBe("+40% 12mo");
   });
 
-  it("returns null momentum when live history has fewer than 2 entries", async () => {
+  it("falls back to curated momentum when live history has fewer than 2 entries", async () => {
     const { toMvpLegoSet } = await importLiveCatalog();
 
     const out = toMvpLegoSet({
@@ -124,7 +124,7 @@ describe("toMvpLegoSet", () => {
       mlForecast: null,
     });
 
-    expect(out.momentum).toBeNull();
+    expect(out.momentum).toBe(curated.momentum);
   });
 
   it("uses ML forecast proj5y/bear/bull when mlForecast is present", async () => {

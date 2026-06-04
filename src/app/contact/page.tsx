@@ -73,12 +73,15 @@ export default function ContactPage() {
             Inputs
           </h3>
           <ul className="list-disc pl-6 space-y-1">
-            <li><strong>Historical pricing:</strong> 3-year sealed comp window from major resale venues.</li>
+            <li><strong>Historical pricing:</strong> monthly sealed price snapshots from PriceCharting going back as far as available (typically 12–36 months per set), supplemented by BrickLink sold comps and eBay completed listings.</li>
             <li><strong>Retirement status:</strong> active vs. retiring-soon vs. retired drives supply dynamics.</li>
-            <li><strong>Community signal:</strong> Reddit threads, Google Trends, BrickLink wantlists.</li>
+            <li><strong>Community signal:</strong> Google Trends monthly search interest (35% weight) and Reddit/forum engagement scores (65% weight), both synced monthly.</li>
             <li><strong>Market liquidity:</strong> active listing depth as a proxy for tradeability.</li>
             <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price.</li>
           </ul>
+          <p className="mt-3 text-slate-700">
+            Prices and signals update hourly via ISR. The ML model retrains weekly on the latest available data.
+          </p>
 
           <h3 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
             Composite score

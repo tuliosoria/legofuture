@@ -25,7 +25,8 @@ const RETIREMENT_COPY: Record<LegoSet["status"], string> = {
   Active: "Still in production at MSRP — appreciation gated on retirement.",
 };
 
-const COMMUNITY_COPY = (score: number) => {
+const COMMUNITY_COPY = (score: number | null) => {
+  if (score == null) return "Community signal pending data.";
   if (score >= 85) return `Top-tier community engagement (${score}/100).`;
   if (score >= 75) return `Strong community signal (${score}/100).`;
   if (score >= 65) return `Healthy community interest (${score}/100).`;

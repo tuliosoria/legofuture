@@ -7,8 +7,8 @@ interface Props {
 
 export function LiveMarketPanel({ set }: Props) {
   const items = [
-    { label: "Community", value: `${set.communityScore}/100` },
-    { label: "Momentum", value: set.momentum },
+    { label: "Community", value: set.communityScore == null ? "—" : `${set.communityScore}/100` },
+    { label: "Momentum", value: set.momentum ?? "—" },
     { label: "Liquidity", value: set.liquidity },
     { label: "Price agreement", value: set.priceAgreement },
   ];
