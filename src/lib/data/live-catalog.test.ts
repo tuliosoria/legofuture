@@ -127,6 +127,31 @@ describe("toMvpLegoSet", () => {
     expect(out.momentum).toBe(curated.momentum);
   });
 
+  it("falls back to curated status when DDB row lacks retired/retiringSoon fields", async () => {
+    const { toMvpLegoSet } = await importLiveCatalog();
+
+    // Simulate a real-world DDB CATALOG row produced by the current sync
+    // pipeline: the row exists, but `retired` and `retiringSoon` were
+    // never populated. The adapter must NOT silently flip the curated
+    // "Retired" status to "Active" just because DDB knows the set.
+    const retiredCurated = LEGO_SETS.find((s) => s.status === "Retired");
+    expect(retiredCurated).toBeDefined();
+    const ddbWithoutRetirementFlags = ddbSet({
+      retired: undefined as unknown as boolean,
+      retiringSoon: undefined,
+    });
+
+    const out = toMvpLegoSet({
+      curated: retiredCurated!,
+      ddbProduct: ddbWithoutRetirementFlags,
+      pricing: null,
+      history: [],
+      mlForecast: null,
+    });
+
+    expect(out.status).toBe("Retired");
+  });
+
   it("uses ML forecast proj5y/bear/bull when mlForecast is present", async () => {
     const { toMvpLegoSet } = await importLiveCatalog();
 
