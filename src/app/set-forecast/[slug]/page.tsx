@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LEGO_SETS } from "@/lib/data/sets";
+import { loadLiveCuratedSet, loadLiveHistory } from "@/lib/data/live-catalog";
 import { DetailHero } from "@/components/sets/DetailHero";
 import { WhyThisRating } from "@/components/sets/WhyThisRating";
 import { ScenarioCards } from "@/components/sets/ScenarioCards";
@@ -21,7 +22,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const set = LEGO_SETS.find((s) => s.id === slug);
+  const set = (await loadLiveCuratedSet(slug)) ?? LEGO_SETS.find((s) => s.id === slug);
   if (!set) return { title: "Set not found — LegoFuture" };
   return {
     title: `${set.name} (#${set.setNumber}) — LegoFuture`,
@@ -31,8 +32,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function SetDetailPage({ params }: Params) {
   const { slug } = await params;
-  const set = LEGO_SETS.find((s) => s.id === slug);
+  const [set, history] = await Promise.all([
+    loadLiveCuratedSet(slug),
+    loadLiveHistory(slug),
+  ]);
   if (!set) notFound();
+  void history;
 
   return (
     <main className="mx-auto max-w-[1100px] px-4 md:px-8 py-8">

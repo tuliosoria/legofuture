@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LEGO_SETS } from "@/lib/data/sets";
+import { loadLiveCuratedCatalog } from "@/lib/data/live-catalog";
 import { BrickCard } from "@/components/ui/BrickCard";
 import { BrickButton } from "@/components/ui/BrickButton";
 import { SetCard } from "@/components/sets/SetCard";
@@ -13,10 +13,11 @@ export const metadata: Metadata = {
     "Data-driven 5-year price forecasts for sealed LEGO sets. Monthly buying list, full catalog, scenario modelling — all in one place.",
 };
 
-export default function HomePage() {
-  const topPicks = [...LEGO_SETS].sort((a, b) => b.score - a.score).slice(0, 6);
-  const buyCount = LEGO_SETS.filter((s) => s.signal === "Buy" || s.signal === "Strong Buy").length;
-  const retiringSoon = LEGO_SETS.filter((s) => s.status === "Retiring soon").length;
+export default async function HomePage() {
+  const allSets = await loadLiveCuratedCatalog();
+  const topPicks = [...allSets].sort((a, b) => b.score - a.score).slice(0, 6);
+  const buyCount = allSets.filter((s) => s.signal === "Buy" || s.signal === "Strong Buy").length;
+  const retiringSoon = allSets.filter((s) => s.status === "Retiring soon").length;
 
   return (
     <main>
@@ -32,7 +33,7 @@ export default function HomePage() {
               The screener for sealed-LEGO investors.
             </h1>
             <p className="type-body-lg text-slate-700 mt-5 max-w-xl">
-              Forecast 5-year returns on {LEGO_SETS.length} investment-grade LEGO sets.
+              Forecast 5-year returns on {allSets.length} investment-grade LEGO sets.
               Compare against the S&amp;P 500. Spot retirement opportunities before the market does.
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
@@ -130,7 +131,7 @@ export default function HomePage() {
       {/* Stats strip */}
       <section className="bg-jet-black text-paper">
         <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          <Stat label="Sets tracked" value={LEGO_SETS.length.toString()} />
+          <Stat label="Sets tracked" value={allSets.length.toString()} />
           <Stat label="Buy signals" value={buyCount.toString()} />
           <Stat label="Retiring soon" value={retiringSoon.toString()} />
           <Stat label="Forecast horizon" value="5yr" />

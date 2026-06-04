@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LEGO_SETS } from "@/lib/data/sets";
+import { loadLiveCuratedCatalog } from "@/lib/data/live-catalog";
 import { ForecastFilters } from "@/components/sets/ForecastFilters";
 
 export const revalidate = 3600;
@@ -10,7 +10,8 @@ export const metadata: Metadata = {
     "Browse 5-year price forecasts for 50 investment-grade LEGO sets. Filter by theme, signal, and status.",
 };
 
-export default function SetForecastPage() {
+export default async function SetForecastPage() {
+  const allSets = await loadLiveCuratedCatalog();
   return (
     <main className="mx-auto max-w-[1240px] px-4 md:px-8 py-10">
       <div className="mb-8">
@@ -22,12 +23,12 @@ export default function SetForecastPage() {
           Set Forecast
         </h1>
         <p className="type-body text-slate-700 mt-3 max-w-2xl">
-          5-year price forecasts for {LEGO_SETS.length} hand-picked LEGO sets across modular,
+          5-year price forecasts for {allSets.length} hand-picked LEGO sets across modular,
           UCS, Icons, Technic, and more. Filter and sort to find your edge.
         </p>
       </div>
 
-      <ForecastFilters sets={LEGO_SETS} />
+      <ForecastFilters sets={allSets} />
 
       <p className="type-caption text-slate-500 mt-10 leading-relaxed">
         Educational forecasts only — not financial advice. LEGO is a trademark of the LEGO Group;
