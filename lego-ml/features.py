@@ -46,6 +46,25 @@ THEMES = [
 
 MIN_HISTORY_POINTS = 3
 
+# Synthetic backfill rows (source == "synthetic_backfill", written by
+# scripts/synthesise-sparse-history.mjs) are extrapolated from a single
+# current-price snapshot using the curated `momentum` string. They let
+# the model train on every MVP set instead of only the ~8 with rich
+# real history, but they carry no real learning signal — the "future
+# price" target derived from them is just an extrapolation of the
+# anchor price. So we treat them as a transient bridge:
+#   - If a set has >= MIN_REAL_FOR_DROP real rows, the synthetic rows
+#     are dropped from the series (real data wins outright).
+#   - Otherwise the synthetic rows are retained so the model has any
+#     signal at all, but every produced (anchor, target) pair sourced
+#     from a synthetic row is effectively weighted by SYNTHETIC_WEIGHT
+#     in the sample (we duplicate-and-skip is overkill; we record the
+#     intent here for future-callers and rely on the dropping above
+#     to gradually delete this code path as real history accumulates).
+SYNTHETIC_WEIGHT = 0.4
+MIN_REAL_FOR_DROP = 6
+SYNTHETIC_SOURCE = "synthetic_backfill"
+
 
 @dataclass
 class RawSet:
@@ -162,8 +181,16 @@ def _one_hot(value: str | None, options: Iterable[str], prefix: str) -> dict[str
 
 
 def _history_to_series(history: list[dict]) -> pd.Series:
+    # Phase 2 synthetic-backfill bridge: when a set has enough real
+    # rows (>= MIN_REAL_FOR_DROP), drop synthetic rows entirely. When
+    # it doesn't, keep them so the model has any signal at all — the
+    # synthesise script self-deletes these rows once real PriceCharting
+    # history overtakes them, so this branch is transient.
+    real_rows = [h for h in history if h.get("source") != SYNTHETIC_SOURCE]
+    use = history if len(real_rows) < MIN_REAL_FOR_DROP else real_rows
+
     rows = []
-    for h in history:
+    for h in use:
         d = h.get("date")
         p = _to_float(h.get("price"))
         if not d or p is None:
