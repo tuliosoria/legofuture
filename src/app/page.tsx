@@ -16,8 +16,6 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const allSets = await loadLiveCuratedCatalog();
   const topPicks = [...allSets].sort((a, b) => b.score - a.score).slice(0, 6);
-  const buyCount = allSets.filter((s) => s.signal === "Buy" || s.signal === "Strong Buy").length;
-  const retiringSoon = allSets.filter((s) => s.status === "Retiring soon").length;
 
   return (
     <main>
@@ -128,29 +126,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Stats strip */}
-      <section className="bg-jet-black text-paper">
-        <div className="mx-auto max-w-[1240px] px-4 md:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          <Stat label="Sets tracked" value={allSets.length.toString()} />
-          <Stat label="Buy signals" value={buyCount.toString()} />
-          <Stat label="Retiring soon" value={retiringSoon.toString()} />
-          <Stat label="Forecast horizon" value="5yr" />
-        </div>
-      </section>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p
-        className="type-h1 text-sunshine-yellow"
-        style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
-      >
-        {value}
-      </p>
-      <p className="type-body-sm text-slate-300 mt-1">{label}</p>
-    </div>
   );
 }
