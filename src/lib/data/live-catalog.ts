@@ -101,16 +101,18 @@ function pickCurrentPrice(pricing: ProductPricing | null, fallback: number): num
   return price && price > 0 ? Math.round(price) : fallback;
 }
 
-function statusFromProduct(product: DdbLegoSet | null, fallback: MvpLegoSet["status"]): MvpLegoSet["status"] {
-  if (!product) return fallback;
-  // Only override the curated status when DDB *actually carries* a
-  // retirement signal. The current sync pipeline doesn't populate
-  // `retired` / `retiringSoon` for most rows, so treating a missing
-  // field as "Active" would silently flip well-known retired sets
-  // (Cloud City, Bookshop, Titanic, etc.) onto the Non-Retired list.
-  if (product.retiringSoon === true) return "Retiring soon";
-  if (product.retired === true) return "Retired";
-  if (product.retired === false) return "Active";
+function statusFromProduct(_product: DdbLegoSet | null, fallback: MvpLegoSet["status"]): MvpLegoSet["status"] {
+  // The curated MVP catalog (`src/lib/data/sets.ts`) is the source of truth
+  // for retirement status. No upstream sync (PriceCharting, Rebrickable, eBay)
+  // exposes LEGO's "Retired" / "Retiring soon" / "Active" enum, and
+  // `loadStoredCatalog()` defaults `retired` to `false` when DDB lacks the
+  // field — which would silently flip Cloud City, Bookshop, Titanic, Hogwarts
+  // Castle, etc. onto the Non-Retired Buying List.
+  //
+  // We intentionally ignore `product.retired` and `product.retiringSoon` until
+  // a dedicated retirement-status sync exists. When that lands, this function
+  // can re-introduce explicit `=== true` / `=== false` checks against fields
+  // sourced from a trusted provider (e.g. LEGO.com availability API).
   return fallback;
 }
 

@@ -127,29 +127,48 @@ describe("toMvpLegoSet", () => {
     expect(out.momentum).toBe(curated.momentum);
   });
 
-  it("falls back to curated status when DDB row lacks retired/retiringSoon fields", async () => {
+  it("falls back to curated status even when DDB row carries retired=false (real-world bug)", async () => {
     const { toMvpLegoSet } = await importLiveCatalog();
 
-    // Simulate a real-world DDB CATALOG row produced by the current sync
-    // pipeline: the row exists, but `retired` and `retiringSoon` were
-    // never populated. The adapter must NOT silently flip the curated
-    // "Retired" status to "Active" just because DDB knows the set.
+    // `loadStoredCatalog()` defaults `retired` to `false` when the underlying
+    // DDB item lacks the field — which is the case for every set produced by
+    // the current sync pipeline. Trusting `retired: false` here silently
+    // flipped Cloud City, Bookshop, Titanic, etc. onto the Non-Retired list.
+    // The adapter must always defer to the curated MVP status.
     const retiredCurated = LEGO_SETS.find((s) => s.status === "Retired");
     expect(retiredCurated).toBeDefined();
-    const ddbWithoutRetirementFlags = ddbSet({
-      retired: undefined as unknown as boolean,
-      retiringSoon: undefined,
-    });
+    const ddbDefaultRetiredFalse = ddbSet({ retired: false, retiringSoon: undefined });
 
     const out = toMvpLegoSet({
       curated: retiredCurated!,
-      ddbProduct: ddbWithoutRetirementFlags,
+      ddbProduct: ddbDefaultRetiredFalse,
       pricing: null,
       history: [],
       mlForecast: null,
     });
 
     expect(out.status).toBe("Retired");
+  });
+
+  it("ignores DDB retired=true and preserves curated Active status (no trusted retirement sync yet)", async () => {
+    const { toMvpLegoSet } = await importLiveCatalog();
+
+    const activeCurated = LEGO_SETS.find((s) => s.status === "Active");
+    expect(activeCurated).toBeDefined();
+    // Even if some upstream row claims retired=true, curated wins until a
+    // dedicated retirement-status sync exists. Prevents accidental flips
+    // from noisy upstream data.
+    const ddbClaimsRetired = ddbSet({ retired: true });
+
+    const out = toMvpLegoSet({
+      curated: activeCurated!,
+      ddbProduct: ddbClaimsRetired,
+      pricing: null,
+      history: [],
+      mlForecast: null,
+    });
+
+    expect(out.status).toBe("Active");
   });
 
   it("uses ML forecast proj5y/bear/bull when mlForecast is present", async () => {
