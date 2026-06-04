@@ -136,6 +136,120 @@ def _retirement_months(record: dict) -> float | None:
 
 
 # ---------------------------------------------------------------------------
+# Real-target computation from HISTORY rows
+# ---------------------------------------------------------------------------
+
+# Min real (non-synthetic) data points required before we accept a record's
+# observed CAGR as a real training target. Anything below this falls back to
+# NaN (the row gets dropped at train time).
+MIN_REAL_POINTS = 4
+
+# Min calendar span (in months) between earliest and latest history points
+# required before we trust an observed CAGR. Two adjacent months don't
+# annualize meaningfully.
+MIN_HISTORY_SPAN_MONTHS = 6
+
+# Cap observed annualized log-returns to a sane band so a single outlier
+# set with a 10× pop or a 90% crash doesn't dominate training.
+# log(1 + 1.5) ~ 0.916; log(1 - 0.5) ~ -0.693.
+MAX_ABS_LOG_RETURN_1Y = 0.916
+
+
+def _parse_history_row(row: dict) -> tuple[str | None, float | None, str]:
+    """Extract (date YYYY-MM-DD, price, source) from a HISTORY DDB row."""
+    sk = str(row.get("sk", ""))
+    # SK format: "{condition}#{YYYY-MM-DD}" — date is always the last segment.
+    date = sk.rsplit("#", 1)[-1] if "#" in sk else sk
+    if len(date) < 10:
+        return None, None, ""
+    price = _to_float(row.get("price"))
+    source = str(row.get("source", "")) or "real"
+    return date[:10], price, source
+
+
+def _compute_observed_log_return_1y(history: list[dict]) -> float | None:
+    """Compute the trailing annualized log-return from a set's HISTORY rows.
+
+    Approach: sort by date, take the earliest and latest *real* (non-
+    synthetic) price points if at least MIN_REAL_POINTS exist across at
+    least MIN_HISTORY_SPAN_MONTHS. If too few real points, allow synthetic
+    rows to fill the series (down-weighted at the model level via
+    sample_weight, not here).
+
+    Returns log(1 + annualized_return), clipped to [-MAX_ABS, +MAX_ABS].
+    Returns None if the series is too thin to annualize.
+    """
+    if not history:
+        return None
+
+    parsed: list[tuple[str, float, str]] = []
+    for row in history:
+        date, price, source = _parse_history_row(row)
+        if date and price and price > 0:
+            parsed.append((date, price, source))
+
+    if len(parsed) < 2:
+        return None
+
+    parsed.sort(key=lambda t: t[0])
+
+    # Prefer real-only series if we have enough; otherwise fall back to all
+    # available rows. The caller decides sample_weight.
+    real = [p for p in parsed if p[2] not in ("synthetic_backfill",)]
+    series = real if len(real) >= MIN_REAL_POINTS else parsed
+    if len(series) < 2:
+        return None
+
+    earliest_date, earliest_price, _ = series[0]
+    latest_date, latest_price, _ = series[-1]
+    if earliest_price <= 0 or latest_price <= 0:
+        return None
+
+    try:
+        e_y, e_m, _ = earliest_date.split("-")[:3] + ["01"][: max(0, 3 - len(earliest_date.split("-")))]
+        l_y, l_m, _ = latest_date.split("-")[:3] + ["01"][: max(0, 3 - len(latest_date.split("-")))]
+        span_months = (int(l_y) - int(e_y)) * 12 + (int(l_m) - int(e_m))
+    except (ValueError, IndexError):
+        return None
+
+    if span_months < MIN_HISTORY_SPAN_MONTHS:
+        return None
+
+    total_log_return = math.log(latest_price / earliest_price)
+    annual_log_return = total_log_return * (12.0 / span_months)
+    # Clip to prevent outlier dominance.
+    if annual_log_return > MAX_ABS_LOG_RETURN_1Y:
+        annual_log_return = MAX_ABS_LOG_RETURN_1Y
+    elif annual_log_return < -MAX_ABS_LOG_RETURN_1Y:
+        annual_log_return = -MAX_ABS_LOG_RETURN_1Y
+    return annual_log_return
+
+
+def _history_quality_weight(history: list[dict]) -> float:
+    """Sample weight for a training row based on how 'real' its history is.
+
+    - 1.0 if all points are real (pricecharting-snapshot / pricecharting-chart)
+    - 0.3 if all points are synthetic_backfill
+    - linear interpolation otherwise
+    """
+    if not history:
+        return 0.5
+    total = 0
+    real = 0
+    for row in history:
+        src = str(row.get("source", "")) or "real"
+        if src == "synthetic_backfill":
+            total += 1
+        else:
+            total += 1
+            real += 1
+    if total == 0:
+        return 0.5
+    real_frac = real / total
+    return 0.3 + 0.7 * real_frac
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -143,13 +257,19 @@ def build_feature_matrix(records: list[dict]) -> pd.DataFrame:
     """Convert raw DDB records to a feature DataFrame.
 
     Each record is a flat dict with keys from CATALOG / PRICING rows,
-    already merged by product_id (the caller handles the join).
+    already merged by product_id (the caller handles the join). If the
+    caller attaches a ``"history"`` key (list of HISTORY DDB rows for the
+    product), real per-set forward-return targets are computed from it.
+    Otherwise the row's targets are NaN and it is dropped at train time.
 
     Returns a DataFrame with one row per record and columns:
       - all feature columns listed in FEATURE_COLUMNS
       - 'product_id' identifier column
-      - synthetic target columns: target_1y, target_3y, target_5y
-        (log-return = ln(currentPrice * growthRate^N / currentPrice))
+      - target columns: target_1y, target_3y, target_5y
+        (log-return = ln(1 + observed_annualised_return) × horizon_years,
+        derived from HISTORY rows when available; NaN otherwise)
+      - 'sample_weight' column reflecting how trustworthy the row's
+        target is (1.0 for fully-real history, 0.3 for fully synthetic)
     """
     now_months = _now_months()
     rows: list[dict] = []
@@ -202,13 +322,21 @@ def build_feature_matrix(records: list[dict]) -> pd.DataFrame:
         for t in THEMES:
             row[f"theme_{t}"] = 1.0 if t == theme else 0.0
 
-        # Synthetic targets: log-return = ln(growthFactor) since currentPrice cancels
-        if current_price and current_price > 0:
-            for horizon_years, growth_factor in GROWTH_RATES.items():
-                row[f"target_{horizon_years}y"] = math.log(growth_factor)
+        # Real per-set targets derived from HISTORY rows. The caller is
+        # responsible for attaching `record["history"]` (a list of HISTORY
+        # DDB rows for this product). If unavailable, targets are NaN and
+        # the row is dropped at train time.
+        history = rec.get("history") or []
+        annual_log_return = _compute_observed_log_return_1y(history)
+        if annual_log_return is not None and current_price and current_price > 0:
+            row["target_1y"] = annual_log_return
+            row["target_3y"] = annual_log_return * 3.0
+            row["target_5y"] = annual_log_return * 5.0
+            row["sample_weight"] = _history_quality_weight(history)
         else:
             for horizon_years in GROWTH_RATES:
                 row[f"target_{horizon_years}y"] = float("nan")
+            row["sample_weight"] = 0.0
 
         rows.append(row)
 

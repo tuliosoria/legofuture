@@ -94,7 +94,7 @@ def _scan_all(table, **kwargs) -> list[dict]:
 
 
 def _load_records(table) -> list[dict]:
-    """Load and merge CATALOG + PRICING rows from DDB."""
+    """Load and merge CATALOG + PRICING + HISTORY rows from DDB."""
     catalogs = _query_all(table, KeyConditionExpression=Key("pk").eq("CATALOG"))
     if not catalogs:
         catalogs = _scan_all(table, FilterExpression=Attr("pk").begins_with("CATALOG#PRODUCT#"))
@@ -120,10 +120,28 @@ def _load_records(table) -> list[dict]:
     price_by_id = {k: p for p in pricings if (k := _pid(p))}
     log.info("loaded %d catalog, %d pricing rows", len(cat_by_id), len(price_by_id))
 
+    # Bulk-load HISTORY for every catalog product. The HISTORY table is keyed
+    # `HISTORY#PRODUCT#<pc_id>`, one query per product. We only need products
+    # that have a CATALOG row (the join key).
+    history_by_id: dict[str, list[dict]] = {}
+    for pid in cat_by_id:
+        try:
+            rows = _query_all(
+                table,
+                KeyConditionExpression=Key("pk").eq(f"HISTORY#PRODUCT#{pid}"),
+            )
+        except Exception as exc:
+            log.warning("history query failed for %s: %s", pid, exc)
+            rows = []
+        if rows:
+            history_by_id[pid] = rows
+    log.info("loaded HISTORY for %d products", len(history_by_id))
+
     merged: list[dict] = []
     for pid, cat in cat_by_id.items():
         rec = {**cat, **(price_by_id.get(pid, {}))}
         rec["product_id"] = pid
+        rec["history"] = history_by_id.get(pid, [])
         merged.append(rec)
     return merged
 
@@ -141,9 +159,23 @@ def _train(df: pd.DataFrame, target_col: str) -> tuple[xgb.XGBRegressor | None, 
     feat_cols = feature_columns()
     X = sub[feat_cols].astype(float).fillna(0).values
     y = sub[target_col].astype(float).values
+    # sample_weight reflects how "real" each row's target is: 1.0 for fully
+    # real scraped HISTORY, 0.3 for fully-synthetic backfill. Down-weights
+    # synthetic rows so the model trusts real data more.
+    w = (
+        sub["sample_weight"].astype(float).fillna(0.5).values
+        if "sample_weight" in sub.columns
+        else None
+    )
 
     test_frac = 0.2 if len(sub) >= 10 else 1.0 / len(sub)
-    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=test_frac, random_state=42)
+    if w is not None:
+        X_tr, X_te, y_tr, y_te, w_tr, _w_te = train_test_split(
+            X, y, w, test_size=test_frac, random_state=42
+        )
+    else:
+        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=test_frac, random_state=42)
+        w_tr = None
 
     model = xgb.XGBRegressor(
         n_estimators=100,
@@ -152,11 +184,17 @@ def _train(df: pd.DataFrame, target_col: str) -> tuple[xgb.XGBRegressor | None, 
         subsample=0.9,
         colsample_bytree=0.9,
         objective="reg:squarederror",
+        # base_score=0 so the trees' leaf values ARE the full prediction.
+        # XGBoost's default base_score=0.5 was being passed through the
+        # exp() in lego-ml-scoring.ts as exp(0.5) ≈ 1.65 = +65%, producing
+        # the near-identical "+65% over 5y / +10.5%/yr" output on every set
+        # regardless of features (Bug 1 root cause).
+        base_score=0.0,
         random_state=42,
         n_jobs=1,
         tree_method="hist",
     )
-    model.fit(X_tr, y_tr)
+    model.fit(X_tr, y_tr, sample_weight=w_tr)
 
     preds = model.predict(X_te)
     rmse = float(math.sqrt(mean_squared_error(y_te, preds)))
@@ -165,8 +203,9 @@ def _train(df: pd.DataFrame, target_col: str) -> tuple[xgb.XGBRegressor | None, 
     except ValueError:
         r2 = float("nan")
 
-    log.info("%s: rmse=%.4f r2=%.4f (train=%d test=%d)", target_col, rmse, r2, len(X_tr), len(X_te))
-    return model, {"rmse": rmse, "r2": r2}
+    log.info("%s: rmse=%.4f r2=%.4f (train=%d test=%d) y_std=%.4f pred_std=%.4f",
+             target_col, rmse, r2, len(X_tr), len(X_te), float(np.std(y)), float(np.std(preds)))
+    return model, {"rmse": rmse, "r2": r2, "n_samples": int(len(sub))}
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +334,35 @@ def main() -> int:
         for r in results:
             m = r["metrics"] or {}
             log.info("  %s: rmse=%.4f r2=%.4f  → %s", r["horizon"], m.get("rmse", 0), m.get("r2", 0), r["path"])
+
+        # ---- META#LAST_MODEL_TRAIN ----------------------------------------
+        # Marker row consumed by ops scripts / dashboards to confirm the
+        # retrainer ran and to surface its sample size + headline metrics.
+        if args.upload_to_ddb:
+            try:
+                table = _table()
+                trained_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                sample_count = max(
+                    int(((r.get("metrics") or {}).get("n_samples") or 0)) for r in results
+                )
+                table.put_item(Item={
+                    "pk": "META",
+                    "sk": "LAST_MODEL_TRAIN",
+                    "trainedAt": trained_at,
+                    "sampleCount": sample_count,
+                    "horizons": {
+                        r["horizon"]: {
+                            "rmse": Decimal(str(round((r.get("metrics") or {}).get("rmse", 0), 6))),
+                            "r2": Decimal(str(round((r.get("metrics") or {}).get("r2", 0), 6))),
+                            "nSamples": int((r.get("metrics") or {}).get("n_samples", 0)),
+                        }
+                        for r in results
+                    },
+                })
+                log.info("wrote META#LAST_MODEL_TRAIN trainedAt=%s sampleCount=%d",
+                         trained_at, sample_count)
+            except Exception as exc:
+                log.warning("META#LAST_MODEL_TRAIN write failed: %s", exc)
     else:
         log.warning("No models trained (likely insufficient labeled data).")
 
