@@ -48,26 +48,35 @@ export function WhyThisRating({ set }: Props) {
         Five inputs feed the LegoFuture signal. Each is rated independently.
       </p>
 
-      <DotsRow label="5yr outlook" dots={outlookDots(set)} caption={OUTLOOK_COPY(cagr)} />
+      <DotsRow
+        label="5yr outlook"
+        dots={outlookDots(set)}
+        caption={OUTLOOK_COPY(cagr)}
+        tooltip="XGBoost model predicts the 5-year price from the set's features and PriceCharting history; the annualised CAGR maps to 1–5 dots at the 2/5/10/18%/yr thresholds."
+      />
       <DotsRow
         label="Retirement status"
         dots={retirementDots(set)}
         caption={RETIREMENT_COPY[set.status]}
+        tooltip="Retired sets score 5 dots (supply only shrinks), Retiring soon scores 3 (near-term catalyst), Active scores 2 (return gated on retirement timing)."
       />
       <DotsRow
         label="Community strength"
         dots={communityDots(set)}
         caption={COMMUNITY_COPY(set.communityScore)}
+        tooltip="0–100 score blending Brick Insights aggregate rating and Google Trends search interest. Bucketed into 1–5 dots at 50 / 65 / 75 / 85."
       />
       <DotsRow
         label="Market liquidity"
         dots={liquidityDots(set)}
         caption={set.liquidity}
+        tooltip="How fast you can sell at consensus price, derived from the rolling count of eBay sold-listings over the past 90 days. More listings = higher dots."
       />
       <DotsRow
         label="Price agreement"
         dots={agreementDots(set)}
         caption={`${set.priceAgreement} of recent comps within ±10% of consensus.`}
+        tooltip="Share of recent eBay sold comps that closed within ±10% of the consensus price. High agreement means the market is converged and the quoted price is reliable."
       />
     </BrickCard>
   );
