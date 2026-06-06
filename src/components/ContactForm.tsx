@@ -5,10 +5,6 @@ import { BrickButton } from "@/components/ui/BrickButton";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-const FORMSUBMIT_EMAIL =
-  process.env.NEXT_PUBLIC_FORMSUBMIT_EMAIL ?? "tulio.soria@gmail.com";
-const FORMSUBMIT_ENDPOINT = `https://formsubmit.co/ajax/${FORMSUBMIT_EMAIL}`;
-
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +16,6 @@ export function ContactForm() {
     setError(null);
 
     const formData = new FormData(form);
-
-    // Honeypot: silently treat bot submissions as success to avoid feedback.
     const honeypot = String(formData.get("company") ?? "");
     if (honeypot) {
       setStatus("success");
@@ -34,28 +28,30 @@ export function ContactForm() {
       email: String(formData.get("email") ?? ""),
       subject: String(formData.get("subject") ?? ""),
       message: String(formData.get("message") ?? ""),
-      _subject: "LegoFuture contact form",
-      _template: "table",
-      _honey: honeypot,
+      company: honeypot,
     };
 
     try {
-      const res = await fetch(FORMSUBMIT_ENDPOINT, {
+      const res = await fetch("/api/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = (await res.json().catch(() => ({}))) as {
-        success?: string | boolean;
-        message?: string;
+        ok?: boolean;
+        error?: string;
       };
-      const ok = res.ok && (data.success === "true" || data.success === true);
-      if (!ok) {
+      if (!res.ok || !data.ok) {
         setStatus("error");
-        setError(data.message ?? "Something went wrong. Please try again.");
+        setError(
+          data.error === "missing_fields"
+            ? "Please fill in name, email, and message."
+            : data.error === "invalid_email"
+              ? "That email address doesn't look valid."
+              : data.error === "invalid_message_length"
+                ? "Message must be between 10 and 5000 characters."
+                : "We couldn't send your message. Please try again in a minute.",
+        );
         return;
       }
       setStatus("success");
@@ -107,7 +103,7 @@ export function ContactForm() {
         />
       </div>
 
-      {/* Honeypot: visually hidden, off the tab order. Bots fill every input; humans never see it. */}
+      {/* Honeypot: visually hidden, off the tab order. */}
       <div
         aria-hidden="true"
         style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}
@@ -123,7 +119,10 @@ export function ContactForm() {
       </div>
 
       {status === "error" && error ? (
-        <div className="rounded-chip border-2 border-brick-red bg-brick-red/5 p-3 type-body-sm text-brick-red" role="alert">
+        <div
+          className="rounded-chip border-2 border-brick-red bg-brick-red/5 p-3 type-body-sm text-brick-red"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
