@@ -24,7 +24,7 @@ export function Header() {
           {/* Brand wordmark */}
           <Link
             href="/"
-            className="flex items-center gap-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-bright-blue rounded-sm"
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-bright-blue rounded-sm"
           >
             <span
               className="type-h2 tracking-tight"
@@ -32,6 +32,12 @@ export function Header() {
             >
               <span className="text-brick-red">Lego</span>
               <span className="text-jet-black">Future</span>
+            </span>
+            <span
+              className="inline-flex items-center rounded-sm border-2 border-jet-black bg-pure-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-jet-black leading-none"
+              aria-label="Beta version"
+            >
+              Beta
             </span>
           </Link>
 
