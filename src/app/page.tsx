@@ -8,7 +8,7 @@ import { SetCard } from "@/components/sets/SetCard";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "LegoFuture: 5-year forecasts for investment-grade LEGO sets",
+  title: "BricksFuture: 5-year forecasts for investment-grade LEGO sets",
   description:
     "5-year price forecasts for sealed LEGO sets. Monthly buying list, full catalog, and scenario modelling in one place.",
 };
@@ -89,7 +89,7 @@ export default async function HomePage() {
             className="type-h2 mb-8 text-center"
             style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
           >
-            How LegoFuture works
+            How BricksFuture works
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <BrickCard accentTop="blue">

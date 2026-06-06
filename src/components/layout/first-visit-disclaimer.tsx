@@ -39,7 +39,7 @@ export function FirstVisitDisclaimer() {
       <div className="mx-auto max-w-3xl rounded-lg border-l-4 border-yellow-400 bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur px-4 py-3 pointer-events-auto flex items-start gap-3">
         <p className="text-sm leading-snug flex-1">
           <strong className="font-semibold">
-            LegoFuture is informational only and not financial advice.
+            BricksFuture is informational only and not financial advice.
           </strong>{" "}
           Forecasts are model estimates based on historical PriceCharting data
           and community signals. They are not guarantees. Verify all prices before

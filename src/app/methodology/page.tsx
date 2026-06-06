@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Methodology · LegoFuture",
+  title: "Methodology · BricksFuture",
   description:
-    "How LegoFuture's 5-year forecasts, composite scores, and signals are built. Data sources, weighting, and honest limitations.",
+    "How BricksFuture's 5-year forecasts, composite scores, and signals are built. Data sources, weighting, and honest limitations.",
 };
 
 export default function MethodologyPage() {
@@ -19,7 +19,7 @@ export default function MethodologyPage() {
 
       <div className="prose prose-slate max-w-none type-body text-slate-700 space-y-4">
         <p>
-          LegoFuture publishes a 5-year price forecast for every set in our catalog. The base-case
+          BricksFuture publishes a 5-year price forecast for every set in our catalog. The base-case
           forecast is the centerpiece, but every set also carries a bear and bull scenario so you can
           see the realistic range.
         </p>
@@ -123,8 +123,8 @@ export default function MethodologyPage() {
           Disclosures
         </h2>
         <p>
-          LegoFuture earns affiliate commissions on qualifying eBay purchases originated from links on
-          this site. LEGO® is a trademark of the LEGO Group; LegoFuture is not affiliated with, endorsed
+          BricksFuture earns affiliate commissions on qualifying eBay purchases originated from links on
+          this site. LEGO® is a trademark of the LEGO Group; BricksFuture is not affiliated with, endorsed
           by, or sponsored by the LEGO Group.
         </p>
       </div>

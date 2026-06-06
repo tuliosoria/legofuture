@@ -4,9 +4,9 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import { ContactForm } from "@/components/ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact · LegoFuture",
+  title: "Contact · BricksFuture",
   description:
-    "Get in touch with the LegoFuture team. Questions, set requests, and partnership inquiries.",
+    "Get in touch with the BricksFuture team. Questions, set requests, and partnership inquiries.",
 };
 
 export default function ContactPage() {

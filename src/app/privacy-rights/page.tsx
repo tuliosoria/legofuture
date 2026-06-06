@@ -2,7 +2,7 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Rights · LegoFuture",
+  title: "Privacy Rights · BricksFuture",
   description:
     "Your data-subject rights under GDPR, UK GDPR, and CCPA/CPRA, and how to exercise them.",
 };

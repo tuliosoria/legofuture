@@ -1,7 +1,7 @@
 # LEGO Future
 
 LEGO set investment forecasting — Next.js 16 + Tailwind v4 on AWS Amplify
-(WEB_COMPUTE). Live at [legofuture.com](https://legofuture.com).
+(WEB_COMPUTE). Live at [bricksfuture.com](https://bricksfuture.com).
 
 ## Spec
 
@@ -22,7 +22,7 @@ superpowers and Vercel React best-practices skills this repo uses.
 
 ## Data sync
 
-LegoFuture aggregates pricing from PriceCharting (PC), BrickLink (BL),
+BricksFuture aggregates pricing from PriceCharting (PC), BrickLink (BL),
 Brickset (BS), and eBay sold listings. Each source has its own script in
 `scripts/`. All scripts are **idempotent and resumable** via a
 `META#{SOURCE}_PROGRESS` checkpoint in DynamoDB.

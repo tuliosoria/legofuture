@@ -45,7 +45,7 @@ export function WhyThisRating({ set }: Props) {
         Why this rating
       </h2>
       <p className="type-body-sm text-slate-500 mb-4">
-        Five inputs feed the LegoFuture signal. Each is rated independently.
+        Five inputs feed the BricksFuture signal. Each is rated independently.
       </p>
 
       <DotsRow
