@@ -49,7 +49,7 @@ export function ContactForm() {
       )}
       {status === "error" && (
         <p className="type-body-sm text-brick-red">
-          Something went wrong. Email us directly at hello@legofuture.com instead.
+          Something went wrong. Please try again in a moment.
         </p>
       )}
     </form>
