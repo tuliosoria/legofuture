@@ -94,6 +94,27 @@ export default function ContactPage() {
           </p>
 
           <h3 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
+            About the &ldquo;5-year&rdquo; horizon
+          </h3>
+          <p>
+            We project prices five years out, but you should know how that target is built.
+            PriceCharting history typically goes back 12 to 36 months per set, which means
+            no LEGO set has enough public price data to back-test an actual 5-year forward
+            return. So our training labels are constructed by taking each set&rsquo;s observed
+            trailing annualised return and extrapolating it linearly to a 5-year log-return
+            target. The XGBoost model then learns how a set&rsquo;s features (theme, pieces,
+            age, retirement status, community signal, price agreement, liquidity) map to
+            that target.
+          </p>
+          <p className="mt-3">
+            In plain terms: the &ldquo;5-year forecast&rdquo; is a 5-year projection of the
+            currently observed price trend, conditioned on the set&rsquo;s features. It is
+            not a back-tested 5-year return. As the history pipeline accumulates more
+            months of real data per set, we will retrain on increasingly genuine
+            multi-year targets and update this section.
+          </p>
+
+          <h3 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
             What we don&rsquo;t do
           </h3>
           <p>

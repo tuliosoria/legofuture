@@ -52,7 +52,7 @@ export function WhyThisRating({ set }: Props) {
         label="5yr outlook"
         dots={outlookDots(set)}
         caption={OUTLOOK_COPY(cagr)}
-        tooltip="XGBoost model predicts the 5-year price from the set's features and PriceCharting history; the annualised CAGR maps to 1-5 dots at the 2 / 5 / 10 / 18%/yr thresholds."
+        tooltip="XGBoost model predicts a 5-year price from the set's features. Training labels are extrapolated from each set's trailing annualised return because PriceCharting history is typically only 12 to 36 months. See the methodology page for full caveats."
       />
       <DotsRow
         label="Retirement status"
