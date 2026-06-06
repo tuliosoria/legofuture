@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { href: "/buying-list/retired", label: "Retired Buying List" },
   { href: "/buying-list/non-retired", label: "Non-Retired Buying List" },
   { href: "/set-forecast", label: "Set Forecast" },
-  { href: "/contact", label: "Contact" },
+  { href: "/methodology", label: "Methodology" },
 ];
 
 export function Header() {

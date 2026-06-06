@@ -1,5 +1,6 @@
 import { getLegalConfig } from "@/lib/legal-config";
 import { BrickCard } from "@/components/ui/BrickCard";
+import Link from "next/link";
 
 export const metadata = { title: "Privacy Policy" };
 
@@ -31,14 +32,13 @@ export default function PrivacyPage() {
         </div>
         <div>
           <h2 className="type-h3 text-jet-black mb-2">Contact</h2>
-          {cfg.privacyEmail && (
-            <p className="type-body text-slate-700">
-              Privacy inquiries:{" "}
-              <a href={`mailto:${cfg.privacyEmail}`} className="text-bright-blue hover:underline">
-                {cfg.privacyEmail}
-              </a>
-            </p>
-          )}
+          <p className="type-body text-slate-700">
+            For privacy inquiries, use{" "}
+            <Link href="/contact" className="text-bright-blue hover:underline">
+              our contact form
+            </Link>
+            .
+          </p>
         </div>
       </BrickCard>
     </div>

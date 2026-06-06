@@ -1,5 +1,6 @@
 import { getLegalConfig } from "@/lib/legal-config";
 import { BrickCard } from "@/components/ui/BrickCard";
+import Link from "next/link";
 
 export const metadata = { title: "Privacy Rights" };
 
@@ -15,16 +16,10 @@ export default function PrivacyRightsPage() {
           deletion, correction, and portability of personal data we hold about you.
         </p>
         <p className="type-body text-slate-700">
-          To exercise any privacy right, contact{" "}
-          {cfg.privacyEmail ? (
-            <a href={`mailto:${cfg.privacyEmail}`} className="text-bright-blue hover:underline">
-              {cfg.privacyEmail}
-            </a>
-          ) : (
-            <a href={cfg.contactUrl} target="_blank" rel="noopener noreferrer" className="text-bright-blue hover:underline">
-              our contact page
-            </a>
-          )}
+          To exercise any privacy right, use{" "}
+          <Link href="/contact" className="text-bright-blue hover:underline">
+            our contact form
+          </Link>
           . We will respond within 30 days.
         </p>
       </BrickCard>

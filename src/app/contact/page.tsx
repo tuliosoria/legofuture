@@ -32,14 +32,6 @@ export default function ContactPage() {
         </BrickCard>
 
         <div>
-          <BrickCard accentTop="blue" className="mb-4">
-            <h3 className="type-h4 mb-2" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
-              Direct
-            </h3>
-            <p className="type-body-sm text-slate-700">
-              hello@legofuture.com
-            </p>
-          </BrickCard>
           <BrickCard accentTop="green" className="mb-4">
             <h3 className="type-h4 mb-2" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
               Methodology
