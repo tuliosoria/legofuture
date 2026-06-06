@@ -27,26 +27,67 @@ export default function MethodologyPage() {
         <h2 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
           Inputs
         </h2>
+
+        <h3 className="type-h4 mt-4" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 700 }}>
+          Raw data sources
+        </h3>
         <ul className="list-disc pl-6 space-y-1">
-          <li><strong>Historical pricing:</strong> monthly sealed price snapshots from PriceCharting going back as far as available (typically 12 to 36 months per set), plus BrickLink sold comps and eBay completed listings.</li>
-          <li><strong>Retirement status:</strong> active vs. retiring-soon vs. retired drives supply dynamics.</li>
-          <li><strong>Community signal:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), and Reddit mention volume × engagement (25%). Components are optional; missing signals are redistributed pro-rata. Synced monthly.</li>
-          <li><strong>Market liquidity:</strong> active listing depth as a proxy for tradeability.</li>
-          <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price.</li>
+          <li><strong>PriceCharting:</strong> monthly sealed price snapshots, typically 12 to 36 months of history per set.</li>
+          <li><strong>BrickLink sold comps:</strong> recent secondary-market transaction prices.</li>
+          <li><strong>eBay completed listings:</strong> actual sale prices (not asks) for sealed sets.</li>
+          <li><strong>Rebrickable + LEGO catalog:</strong> set metadata (theme, piece count, release year, MSRP).</li>
+          <li><strong>Retirement status:</strong> active, retiring-soon, or retired, sourced from LEGO.com and curated trackers.</li>
+          <li><strong>Brick Insights, Google Trends, Reddit:</strong> community engagement signals.</li>
         </ul>
-        <p className="mt-3 text-slate-700">
-          Prices and signals update hourly via ISR. The ML model retrains weekly on the latest available data.
+
+        <h3 className="type-h4 mt-6" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 700 }}>
+          Derived signals
+        </h3>
+        <ul className="list-disc pl-6 space-y-1">
+          <li><strong>Community strength:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), Reddit mention volume × engagement (25%). Components are optional; missing signals are redistributed pro-rata. Synced monthly.</li>
+          <li><strong>Market liquidity:</strong> active listing depth as a proxy for how easy a set is to sell.</li>
+          <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price. Tight clusters = high confidence.</li>
+          <li><strong>Trailing annualised return:</strong> the slope of the set&rsquo;s observed price history.</li>
+        </ul>
+
+        <p className="mt-4 text-slate-700">
+          Prices and signals update hourly. The ML model retrains weekly on the latest available data.
+        </p>
+
+        <h3 className="type-h4 mt-6" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 700 }}>
+          How much history we actually have
+        </h3>
+        <p>
+          Across the catalog, most sets only have 12 to 24 months of usable price history.
+          That means the model is, in practice, learning a fairly simple pattern: sets
+          that have trended up recently, in a theme where similar sets have also trended
+          up, tend to keep trending up. There is no deep multi-cycle history for any
+          individual set. We disclose this so you know the model is not divining
+          long-cycle behaviour from data that does not exist.
         </p>
 
         <h2 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
           Composite score
         </h2>
         <p>
-          Each set gets a 0-100 composite score weighting forecast CAGR (35%), retirement status
-          (25%), community demand (20%), and market liquidity + agreement (20%). Sets are then mapped
-          to a signal: <strong>Strong Buy</strong> (best entry), <strong>Buy</strong>, <strong>Watch</strong>
-          (wait for trigger), <strong>Hold</strong>, or <strong>Sell</strong>.
+          The composite score is a single 0-100 summary of the inputs above. It is not a
+          new layer of data, it is a weighted rollup so you can rank sets at a glance.
+          Weights are: forecast CAGR (35%), retirement status (25%), community strength
+          (20%), and market liquidity + price agreement (20%). Retirement status appears
+          in the input list and in the composite weights because it is both a raw fact
+          about a set and a major driver of the ranking, not because it is counted twice.
         </p>
+
+        <p className="mt-3">
+          Sets are then mapped to one of five signals:
+        </p>
+        <ul className="list-disc pl-6 space-y-1">
+          <li><strong>Strong Buy:</strong> top composite score plus a near-term catalyst (retiring soon, sharp recent price acceleration, or a clean entry price below trailing trend). Best risk-adjusted entry right now.</li>
+          <li><strong>Buy:</strong> solid composite score, healthy forecast, no obvious catalyst yet. A reasonable accumulation candidate.</li>
+          <li><strong>Watch:</strong> the set looks interesting but the entry price is wrong today. Add to your list and wait for a price trigger.</li>
+          <li><strong>Hold:</strong> if you already own it, keep it. If you don&rsquo;t, there are better buys. Neutral, not negative.</li>
+          <li><strong>Sell:</strong> forecast and signals point down. Consider exiting.</li>
+        </ul>
 
         <h2 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
           About the &ldquo;5-year&rdquo; horizon
