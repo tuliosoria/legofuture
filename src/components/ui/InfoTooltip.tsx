@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface Props {
   label: string;
@@ -8,16 +9,36 @@ interface Props {
 }
 
 /**
- * Small "ⓘ" icon with a hover/focus tooltip. Accessible (keyboard-focusable
- * button, `aria-describedby` linkage, dismiss on Escape) and dependency-free.
+ * Small "ⓘ" icon with a hover/focus tooltip. The popover renders into a
+ * portal at <body> using fixed positioning so it can't be clipped by an
+ * ancestor's `overflow: hidden` / `overflow: clip` (the typical "tooltip
+ * hidden behind container" bug). Accessible: keyboard-focusable button,
+ * `aria-describedby` linkage, dismiss on Escape.
  */
 export function InfoTooltip({ label, children }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
   const tipId = useId();
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount detection for portal target
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    // Anchor below + horizontally centered on the icon. The tooltip itself
+    // is `-translate-x-1/2` so `left` is the center point.
+    setCoords({ top: r.bottom + 8, left: r.left + r.width / 2 });
+  }, [open]);
+
   return (
-    <span className="relative inline-flex items-center align-middle">
+    <span className="inline-flex items-center align-middle">
       <button
+        ref={btnRef}
         type="button"
         aria-label={`More about ${label}`}
         aria-describedby={open ? tipId : undefined}
@@ -33,15 +54,19 @@ export function InfoTooltip({ label, children }: Props) {
       >
         i
       </button>
-      {open && (
-        <span
-          id={tipId}
-          role="tooltip"
-          className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-md border border-slate-200 bg-pure-white px-3 py-2 text-left type-caption leading-snug text-slate-700 shadow-lg"
-        >
-          {children}
-        </span>
-      )}
+      {open && mounted && coords
+        ? createPortal(
+            <span
+              id={tipId}
+              role="tooltip"
+              style={{ top: coords.top, left: coords.left }}
+              className="pointer-events-none fixed z-[1000] w-64 -translate-x-1/2 rounded-md border border-slate-200 bg-pure-white px-3 py-2 text-left type-caption leading-snug text-slate-700 shadow-lg"
+            >
+              {children}
+            </span>,
+            document.body
+          )
+        : null}
     </span>
   );
 }
