@@ -49,11 +49,18 @@ export async function POST(req: Request) {
   };
 
   try {
+    const origin = req.headers.get("origin") ?? "https://legofuture.com";
+    const referer = req.headers.get("referer") ?? `${origin}/contact`;
+
     const res = await fetch(FORMSUBMIT_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        // FormSubmit gates the /ajax/ endpoint on the Referer header.
+        Referer: referer,
+        Origin: origin,
+        "User-Agent": "Mozilla/5.0 (compatible; LegoFuture/1.0)",
       },
       body: JSON.stringify(fsPayload),
     });
@@ -72,8 +79,12 @@ export async function POST(req: Request) {
         status: res.status,
         bodySnippet: text.slice(0, 200),
       });
+      const msg = data.message ?? "";
+      const errorCode = /Activation/i.test(msg)
+        ? "pending_activation"
+        : "delivery_failed";
       return NextResponse.json(
-        { ok: false, error: data.message ?? "delivery_failed" },
+        { ok: false, error: errorCode, detail: msg || undefined },
         { status: 502 },
       );
     }

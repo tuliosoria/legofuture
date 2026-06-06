@@ -50,7 +50,9 @@ export function ContactForm() {
               ? "That email address doesn't look valid."
               : data.error === "invalid_message_length"
                 ? "Message must be between 10 and 5000 characters."
-                : "We couldn't send your message. Please try again in a minute.",
+                : data.error === "pending_activation"
+                  ? "The form is being activated for the first time. Please try again in a few minutes."
+                  : "We couldn't send your message. Please try again in a minute.",
         );
         return;
       }
