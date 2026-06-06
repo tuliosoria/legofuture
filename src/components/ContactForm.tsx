@@ -3,55 +3,134 @@
 import { useState } from "react";
 import { BrickButton } from "@/components/ui/BrickButton";
 
-export function ContactForm() {
-  const [status, setStatus] = useState<"idle" | "submitting" | "ok" | "error">("idle");
+type Status = "idle" | "submitting" | "success" | "error";
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+const FORMSUBMIT_EMAIL =
+  process.env.NEXT_PUBLIC_FORMSUBMIT_EMAIL ?? "tulio.soria@gmail.com";
+const FORMSUBMIT_ENDPOINT = `https://formsubmit.co/ajax/${FORMSUBMIT_EMAIL}`;
+
+export function ContactForm() {
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
     setStatus("submitting");
-    const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
+    setError(null);
+
+    const formData = new FormData(form);
+
+    // Honeypot: silently treat bot submissions as success to avoid feedback.
+    const honeypot = String(formData.get("company") ?? "");
+    if (honeypot) {
+      setStatus("success");
+      form.reset();
+      return;
+    }
+
+    const payload = {
+      name: String(formData.get("name") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      subject: String(formData.get("subject") ?? ""),
+      message: String(formData.get("message") ?? ""),
+      _subject: "LegoFuture contact form",
+      _template: "table",
+      _honey: honeypot,
+    };
+
     try {
-      const res = await fetch("/api/contact", {
+      const res = await fetch(FORMSUBMIT_ENDPOINT, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(payload),
       });
-      setStatus(res.ok ? "ok" : "error");
-      if (res.ok) e.currentTarget.reset();
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: string | boolean;
+        message?: string;
+      };
+      const ok = res.ok && (data.success === "true" || data.success === true);
+      if (!ok) {
+        setStatus("error");
+        setError(data.message ?? "Something went wrong. Please try again.");
+        return;
+      }
+      setStatus("success");
+      form.reset();
     } catch {
       setStatus("error");
+      setError("Network error. Please try again.");
     }
   }
 
+  if (status === "success") {
+    return (
+      <div className="rounded-chip border-2 border-jet-black bg-pure-green/10 p-4 type-body-sm text-jet-black">
+        <p className="font-semibold">Thanks, your message is on its way.</p>
+        <p className="mt-1 text-slate-700">
+          We&rsquo;ll reply to the email you provided, usually within 2 business days.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("idle");
+            setError(null);
+          }}
+          className="mt-3 type-caption font-semibold underline text-bright-blue"
+        >
+          Send another message
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <Field name="name" label="Your name" required />
-      <Field name="email" label="Email" type="email" required />
-      <Field name="subject" label="Subject" />
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <Field name="name" label="Your name" required maxLength={120} autoComplete="name" />
+      <Field name="email" label="Email" type="email" required maxLength={254} autoComplete="email" />
+      <Field name="subject" label="Subject" maxLength={200} />
       <div>
         <label htmlFor="message" className="type-caption text-slate-500 mb-1 block">
-          Message
+          Message<span className="text-brick-red ml-0.5">*</span>
         </label>
         <textarea
           id="message"
           name="message"
           required
-          rows={5}
+          minLength={10}
+          maxLength={5000}
+          rows={6}
           className="w-full rounded-chip border-2 border-jet-black bg-pure-white px-3 py-2 type-body-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-bright-blue"
         />
       </div>
+
+      {/* Honeypot: visually hidden, off the tab order. Bots fill every input; humans never see it. */}
+      <div
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}
+      >
+        <label htmlFor="contact-company">Company</label>
+        <input
+          id="contact-company"
+          name="company"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+
+      {status === "error" && error ? (
+        <div className="rounded-chip border-2 border-brick-red bg-brick-red/5 p-3 type-body-sm text-brick-red" role="alert">
+          {error}
+        </div>
+      ) : null}
+
       <BrickButton type="submit" variant="primary" disabled={status === "submitting"}>
         {status === "submitting" ? "Sending…" : "Send message"}
       </BrickButton>
-      {status === "ok" && (
-        <p className="type-body-sm text-pure-green">Thanks. We got your message and will reply within 2 business days.</p>
-      )}
-      {status === "error" && (
-        <p className="type-body-sm text-brick-red">
-          Something went wrong. Please try again in a moment.
-        </p>
-      )}
     </form>
   );
 }
@@ -61,11 +140,15 @@ function Field({
   label,
   type = "text",
   required = false,
+  maxLength,
+  autoComplete,
 }: {
   name: string;
   label: string;
   type?: string;
   required?: boolean;
+  maxLength?: number;
+  autoComplete?: string;
 }) {
   return (
     <div>
@@ -78,6 +161,8 @@ function Field({
         name={name}
         type={type}
         required={required}
+        maxLength={maxLength}
+        autoComplete={autoComplete}
         className="w-full rounded-chip border-2 border-jet-black bg-pure-white px-3 py-2 type-body-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-bright-blue"
       />
     </div>
