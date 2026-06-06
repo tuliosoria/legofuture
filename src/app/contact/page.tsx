@@ -75,7 +75,7 @@ export default function ContactPage() {
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Historical pricing:</strong> monthly sealed price snapshots from PriceCharting going back as far as available (typically 12–36 months per set), supplemented by BrickLink sold comps and eBay completed listings.</li>
             <li><strong>Retirement status:</strong> active vs. retiring-soon vs. retired drives supply dynamics.</li>
-            <li><strong>Community signal:</strong> Google Trends monthly search interest (35% weight) and Reddit/forum engagement scores (65% weight), both synced monthly.</li>
+            <li><strong>Community signal:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), and Reddit mention volume × engagement (25%). Components are optional — missing signals are redistributed pro-rata. Synced monthly.</li>
             <li><strong>Market liquidity:</strong> active listing depth as a proxy for tradeability.</li>
             <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price.</li>
           </ul>

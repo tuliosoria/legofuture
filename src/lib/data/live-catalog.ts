@@ -1,6 +1,7 @@
 import "server-only";
 
 import { LEGO_SETS } from "@/lib/data/sets";
+import { computeCommunityScore } from "@/lib/db/lego-community";
 import { loadHistory } from "@/lib/db/lego-history";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricingFromDdb } from "@/lib/domain/lego-estimate";
@@ -30,6 +31,12 @@ export interface AdaptInput {
   pricing: ProductPricing | null;
   history: HistoryPoint[];
   mlForecast: Forecast | null;
+  /**
+   * Live community score (0-100) blended from COMMUNITY + TRENDS + REDDIT
+   * DDB rows. When null we fall back to the hand-curated value from
+   * `sets.ts`. Plumbed in by `adaptCuratedSet` via `computeCommunityScore`.
+   */
+  communityScore?: number | null;
 }
 
 async function scanCatalogBySetNumber(): Promise<Map<string, DdbLegoSet>> {
@@ -118,7 +125,12 @@ function statusFromProduct(_product: DdbLegoSet | null, fallback: MvpLegoSet["st
 
 export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
   const { curated, ddbProduct, pricing, history, mlForecast } = input;
-  const hasLiveData = ddbProduct !== null || pricing !== null || history.length > 0 || mlForecast !== null;
+  const hasLiveData =
+    ddbProduct !== null ||
+    pricing !== null ||
+    history.length > 0 ||
+    mlForecast !== null ||
+    input.communityScore != null;
   if (!hasLiveData) return { ...curated };
 
   const momentum = computeMomentum(history);
@@ -126,6 +138,11 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
   const proj5y = mlForecast?.scenarios?.moderate?.projectedValue ?? curated.proj5y;
   const bear = mlForecast?.scenarios?.pessimist?.projectedValue ?? curated.bear;
   const bull = mlForecast?.scenarios?.optimist?.projectedValue ?? curated.bull;
+  // Prefer live blended community score when available; otherwise keep the
+  // curated hand-typed value. `null` from the blender means *all three*
+  // upstream signals are missing — in that case curated wins.
+  const communityScore =
+    input.communityScore != null ? input.communityScore : curated.communityScore;
 
   return {
     ...curated,
@@ -141,18 +158,26 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
     bull: Math.round(bull),
     pieces: ddbProduct?.pieceCount ?? curated.pieces,
     momentum: (momentum ?? curated.momentum) as MvpLegoSet["momentum"],
+    communityScore,
     thesis: curated.thesis,
   };
 }
 
 async function adaptCuratedSet(curated: MvpLegoSet, ddbProduct: DdbLegoSet | null): Promise<MvpLegoSet> {
+  // Community score is computed even when no PriceCharting product row
+  // exists for the set — COMMUNITY/TRENDS/REDDIT are keyed on setNumber and
+  // independent of the pricing pipeline.
+  const communityPromise = computeCommunityScore(curated.setNumber).catch(() => null);
+
   if (!ddbProduct) {
-    return toMvpLegoSet({ curated, ddbProduct: null, pricing: null, history: [], mlForecast: null });
+    const communityScore = await communityPromise;
+    return toMvpLegoSet({ curated, ddbProduct: null, pricing: null, history: [], mlForecast: null, communityScore });
   }
 
-  const [pricing, history] = await Promise.all([
+  const [pricing, history, communityScore] = await Promise.all([
     getPricingFromDdb(ddbProduct).catch(() => null),
     loadHistoryWithFallback(ddbProduct),
+    communityPromise,
   ]);
   const hasMarketPrice = Boolean(pricing?.newPrice ?? pricing?.cibPrice ?? pricing?.loosePrice);
   const canForecast = ddbProduct.forecastEligible !== false && (hasMarketPrice || ddbProduct.originalMsrp > 0);
@@ -160,7 +185,7 @@ async function adaptCuratedSet(curated: MvpLegoSet, ddbProduct: DdbLegoSet | nul
     ? await computeMlForecast(ddbProduct, pricing).catch(() => null)
     : null;
 
-  return toMvpLegoSet({ curated, ddbProduct, pricing, history, mlForecast });
+  return toMvpLegoSet({ curated, ddbProduct, pricing, history, mlForecast, communityScore });
 }
 
 export async function loadLiveCuratedCatalog(): Promise<MvpLegoSet[]> {
