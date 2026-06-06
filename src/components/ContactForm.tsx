@@ -45,7 +45,7 @@ export function ContactForm() {
         {status === "submitting" ? "Sending…" : "Send message"}
       </BrickButton>
       {status === "ok" && (
-        <p className="type-body-sm text-pure-green">Thanks &mdash; we got your message. We&rsquo;ll reply within 2 business days.</p>
+        <p className="type-body-sm text-pure-green">Thanks. We got your message and will reply within 2 business days.</p>
       )}
       {status === "error" && (
         <p className="type-body-sm text-brick-red">

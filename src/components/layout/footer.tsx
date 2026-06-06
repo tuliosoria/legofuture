@@ -75,7 +75,7 @@ export function Footer() {
 
           <div className="border-t border-slate-700 pt-6 text-center">
             <p className="type-body-sm text-slate-500">
-              © {year} LegoFuture. Educational tools only — not financial advice.
+              © {year} LegoFuture. Educational tools only. Not financial advice.
             </p>
             <p className="mt-1 type-body-sm text-slate-500">
               LEGO is a trademark of the LEGO Group. LegoFuture is not affiliated with or endorsed by the LEGO Group.

@@ -61,7 +61,7 @@ export function ConditionSelector({
             `$${price.toLocaleString()}`
           ) : (
             <span className="type-body-sm font-medium opacity-80">
-              Price unavailable — sync pending
+              Price unavailable. Sync pending
             </span>
           )}
         </p>

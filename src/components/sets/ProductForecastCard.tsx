@@ -101,7 +101,7 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
           <div className="mb-3 rounded-sm border border-dashed border-jet-black/40 bg-slate-50 p-3 text-center">
             <p className="type-eyebrow text-slate-500">No pricing data yet</p>
             <p className="type-body-sm text-slate-600 mt-1">
-              Catalog entry only — projections unavailable.
+              Catalog entry only. Projections unavailable.
             </p>
           </div>
         ) : (
@@ -124,7 +124,7 @@ export function ProductForecastCard({ product, forecast }: ProductForecastCardPr
                   Now
                   {isEstimated && (
                     <span
-                      title="Estimated from piece count × theme median — no marketplace data yet"
+                      title="Estimated from piece count × theme median. No marketplace data yet."
                       className="bg-slate-200 text-slate-700 type-eyebrow px-1 py-px rounded-chip"
                     >
                       est

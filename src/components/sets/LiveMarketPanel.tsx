@@ -12,7 +12,7 @@ export function LiveMarketPanel({ set }: Props) {
       label: "Community",
       value: set.communityScore == null ? "—" : `${set.communityScore}/100`,
       tooltip:
-        "0–100 score blending Brick Insights aggregate rating (50%), Google Trends search interest (25%), and Reddit mention volume × engagement (25%). Each component is optional; missing signals are redistributed pro-rata.",
+        "0-100 score blending Brick Insights aggregate rating (50%), Google Trends search interest (25%), and Reddit mention volume × engagement (25%). Each component is optional; missing signals are redistributed pro-rata.",
     },
     {
       label: "Momentum",

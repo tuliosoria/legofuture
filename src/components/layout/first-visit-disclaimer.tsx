@@ -42,7 +42,7 @@ export function FirstVisitDisclaimer() {
             LegoFuture is informational only and not financial advice.
           </strong>{" "}
           Forecasts are model estimates based on historical PriceCharting data
-          and community signals — not guarantees. Verify all prices before
+          and community signals. They are not guarantees. Verify all prices before
           buying or selling.
         </p>
         <button

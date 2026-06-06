@@ -54,7 +54,12 @@ export function Header() {
           </nav>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex">
+          <div className="hidden md:flex items-center gap-2">
+            <Link href="/contact">
+              <BrickButton variant="secondary" size="sm">
+                Share feedback
+              </BrickButton>
+            </Link>
             <Link href="/set-forecast">
               <BrickButton variant="primary" size="sm">
                 See forecasts
@@ -98,7 +103,12 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
+              <Link href="/contact" onClick={() => setMobileOpen(false)}>
+                <BrickButton variant="secondary" size="sm" className="w-full justify-center">
+                  Share feedback
+                </BrickButton>
+              </Link>
               <Link href="/set-forecast" onClick={() => setMobileOpen(false)}>
                 <BrickButton variant="primary" size="sm" className="w-full justify-center">
                   See forecasts

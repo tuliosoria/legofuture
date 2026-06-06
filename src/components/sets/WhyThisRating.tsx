@@ -12,17 +12,17 @@ import {
 
 const OUTLOOK_COPY = (cagr: number) => {
   const pct = (cagr * 100).toFixed(1);
-  if (cagr >= 0.18) return `Exceptional 5yr CAGR (${pct}%/yr) — meaningfully outperforms equities.`;
-  if (cagr >= 0.10) return `Strong 5yr CAGR (${pct}%/yr) — comfortably above S&P 500 baseline.`;
-  if (cagr >= 0.05) return `Moderate 5yr CAGR (${pct}%/yr) — roughly tracks inflation-plus.`;
-  if (cagr >= 0) return `Low expected return (${pct}%/yr) — below market.`;
-  return `Negative expected return (${pct}%/yr) — consider waiting.`;
+  if (cagr >= 0.18) return `Strong 5yr CAGR (${pct}%/yr). Well above equities.`;
+  if (cagr >= 0.10) return `Solid 5yr CAGR (${pct}%/yr). Above the S&P 500 baseline.`;
+  if (cagr >= 0.05) return `Moderate 5yr CAGR (${pct}%/yr). Roughly inflation-plus.`;
+  if (cagr >= 0) return `Low expected return (${pct}%/yr). Below market.`;
+  return `Negative expected return (${pct}%/yr). Consider waiting.`;
 };
 
 const RETIREMENT_COPY: Record<LegoSet["status"], string> = {
   Retired: "Production has ended; secondary supply only.",
   "Retiring soon": "Production winding down; limited entry window.",
-  Active: "Still in production at MSRP — appreciation gated on retirement.",
+  Active: "Still in production at MSRP. Return is gated on retirement.",
 };
 
 const COMMUNITY_COPY = (score: number | null) => {
@@ -52,7 +52,7 @@ export function WhyThisRating({ set }: Props) {
         label="5yr outlook"
         dots={outlookDots(set)}
         caption={OUTLOOK_COPY(cagr)}
-        tooltip="XGBoost model predicts the 5-year price from the set's features and PriceCharting history; the annualised CAGR maps to 1–5 dots at the 2/5/10/18%/yr thresholds."
+        tooltip="XGBoost model predicts the 5-year price from the set's features and PriceCharting history; the annualised CAGR maps to 1-5 dots at the 2 / 5 / 10 / 18%/yr thresholds."
       />
       <DotsRow
         label="Retirement status"
@@ -64,7 +64,7 @@ export function WhyThisRating({ set }: Props) {
         label="Community strength"
         dots={communityDots(set)}
         caption={COMMUNITY_COPY(set.communityScore)}
-        tooltip="0–100 score blending Brick Insights aggregate rating (50%), Google Trends search interest (25%), and Reddit mention volume × engagement (25%). Missing signals are redistributed pro-rata. Bucketed into 1–5 dots at 50 / 65 / 75 / 85."
+        tooltip="0-100 score blending Brick Insights aggregate rating (50%), Google Trends search interest (25%), and Reddit mention volume × engagement (25%). Missing signals are redistributed pro-rata. Bucketed into 1-5 dots at 50 / 65 / 75 / 85."
       />
       <DotsRow
         label="Market liquidity"
