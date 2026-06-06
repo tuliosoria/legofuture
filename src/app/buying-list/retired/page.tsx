@@ -62,7 +62,7 @@ export default async function RetiredBuyingListPage() {
         <p className="type-body-sm text-slate-700 leading-relaxed">
           The composite score (0-100) weights: 5yr CAGR forecast (35%), retirement status (25%),
           community engagement (20%), and market liquidity plus price agreement (20%). See the
-          full methodology on the <Link href="/contact#methodology" className="text-bright-blue underline">contact page</Link>.
+          full methodology on the <Link href="/methodology" className="text-bright-blue underline">contact page</Link>.
         </p>
       </BrickCard>
 
