@@ -15,6 +15,7 @@
     "smoke:sync": "node --env-file=.env.local scripts/smoke-test-sync.mjs",
     "sync:images": "node --env-file=.env.local scripts/sync-images.mjs",
     "sync:community": "node --env-file=.env.local scripts/sync-community.mjs",
+    "sync:reddit": "node --env-file=.env.local scripts/sync-reddit-mentions.mjs",
     "sync:pc-csv": "node --env-file=.env.local scripts/sync-pricecharting-csv.mjs",
     "sync:pc-history": "node --env-file=.env.local scripts/scrape-pricecharting-history.mjs",
     "sync:history-snapshot": "node --env-file=.env.local scripts/backfill-current-month-history.mjs",

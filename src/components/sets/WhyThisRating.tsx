@@ -64,7 +64,7 @@ export function WhyThisRating({ set }: Props) {
         label="Community strength"
         dots={communityDots(set)}
         caption={COMMUNITY_COPY(set.communityScore)}
-        tooltip="0–100 score blending Brick Insights aggregate rating and Google Trends search interest. Bucketed into 1–5 dots at 50 / 65 / 75 / 85."
+        tooltip="0–100 score blending Brick Insights aggregate rating (50%), Google Trends search interest (25%), and Reddit mention volume × engagement (25%). Missing signals are redistributed pro-rata. Bucketed into 1–5 dots at 50 / 65 / 75 / 85."
       />
       <DotsRow
         label="Market liquidity"
