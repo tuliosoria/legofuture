@@ -4,7 +4,7 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import { ContactForm } from "@/components/ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact & Methodology — LegoFuture",
+  title: "Contact & Methodology · LegoFuture",
   description:
     "Get in touch with the LegoFuture team or read how our 5-year forecasts and composite scoring work.",
 };
@@ -26,7 +26,7 @@ export default function ContactPage() {
             Send us a message
           </h2>
           <p className="type-body-sm text-slate-700 mb-4">
-            Questions, set requests, partnership inquiries — we read everything.
+            Questions, set requests, partnership inquiries. We read everything.
           </p>
           <ContactForm />
         </BrickCard>
@@ -73,9 +73,9 @@ export default function ContactPage() {
             Inputs
           </h3>
           <ul className="list-disc pl-6 space-y-1">
-            <li><strong>Historical pricing:</strong> monthly sealed price snapshots from PriceCharting going back as far as available (typically 12–36 months per set), supplemented by BrickLink sold comps and eBay completed listings.</li>
+            <li><strong>Historical pricing:</strong> monthly sealed price snapshots from PriceCharting going back as far as available (typically 12 to 36 months per set), plus BrickLink sold comps and eBay completed listings.</li>
             <li><strong>Retirement status:</strong> active vs. retiring-soon vs. retired drives supply dynamics.</li>
-            <li><strong>Community signal:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), and Reddit mention volume × engagement (25%). Components are optional — missing signals are redistributed pro-rata. Synced monthly.</li>
+            <li><strong>Community signal:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), and Reddit mention volume × engagement (25%). Components are optional; missing signals are redistributed pro-rata. Synced monthly.</li>
             <li><strong>Market liquidity:</strong> active listing depth as a proxy for tradeability.</li>
             <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price.</li>
           </ul>
@@ -87,7 +87,7 @@ export default function ContactPage() {
             Composite score
           </h3>
           <p>
-            Each set gets a 0–100 composite score weighting forecast CAGR (35%), retirement status
+            Each set gets a 0-100 composite score weighting forecast CAGR (35%), retirement status
             (25%), community demand (20%), and market liquidity + agreement (20%). Sets are then mapped
             to a signal: <strong>Strong Buy</strong> (best entry), <strong>Buy</strong>, <strong>Watch</strong>
             (wait for trigger), <strong>Hold</strong>, or <strong>Sell</strong>.
@@ -99,7 +99,7 @@ export default function ContactPage() {
           <p>
             We do not give individualised financial advice. We do not guarantee returns. We do not
             account for taxes, transaction costs, storage costs, or condition risk. Forecasts are
-            educational starting points &mdash; always do your own research before buying.
+            educational starting points. Always do your own research before buying.
           </p>
 
           <h3 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>

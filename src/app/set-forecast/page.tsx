@@ -5,9 +5,9 @@ import { ForecastFilters } from "@/components/sets/ForecastFilters";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Set Forecast — LegoFuture",
+  title: "Set Forecast · LegoFuture",
   description:
-    "Browse 5-year price forecasts for 50 investment-grade LEGO sets. Filter by theme, signal, and status.",
+    "5-year price forecasts for 50 investment-grade LEGO sets. Filter by theme, signal, and status.",
 };
 
 export default async function SetForecastPage() {
@@ -31,7 +31,7 @@ export default async function SetForecastPage() {
       <ForecastFilters sets={allSets} />
 
       <p className="type-caption text-slate-500 mt-10 leading-relaxed">
-        Educational forecasts only — not financial advice. LEGO is a trademark of the LEGO Group;
+        Educational forecasts only. Not financial advice. LEGO is a trademark of the LEGO Group;
         LegoFuture is not affiliated with or endorsed by the LEGO Group.
       </p>
     </main>

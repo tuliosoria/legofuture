@@ -8,9 +8,9 @@ import { SetCard } from "@/components/sets/SetCard";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "LegoFuture — 5-year forecasts for investment-grade LEGO sets",
+  title: "LegoFuture: 5-year forecasts for investment-grade LEGO sets",
   description:
-    "Data-driven 5-year price forecasts for sealed LEGO sets. Monthly buying list, full catalog, scenario modelling — all in one place.",
+    "5-year price forecasts for sealed LEGO sets. Monthly buying list, full catalog, and scenario modelling in one place.",
 };
 
 export default async function HomePage() {
@@ -31,8 +31,8 @@ export default async function HomePage() {
               The screener for sealed-LEGO investors.
             </h1>
             <p className="type-body-lg text-slate-700 mt-5 max-w-xl">
-              Forecast 5-year returns on {allSets.length} investment-grade LEGO sets.
-              Compare against the S&amp;P 500. Spot retirement opportunities before the market does.
+              5-year return forecasts on {allSets.length} investment-grade LEGO sets, with an
+              S&amp;P 500 benchmark and an early read on retirement supply shocks.
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
               <Link href="/buying-list/retired">
@@ -98,8 +98,8 @@ export default async function HomePage() {
                 Sealed-set focus
               </h3>
               <p className="type-body-sm text-slate-700 mt-2">
-                We track only sealed, factory-new LEGO sets — the segment where retirement supply shocks
-                drive consistent appreciation.
+                We only track sealed, factory-new LEGO sets. That is the segment where
+                retirement supply shocks drive most of the appreciation.
               </p>
             </BrickCard>
             <BrickCard accentTop="yellow">
@@ -108,8 +108,8 @@ export default async function HomePage() {
                 Composite scoring
               </h3>
               <p className="type-body-sm text-slate-700 mt-2">
-                Each set is scored 0–100 across forecast ROI, retirement status, community demand, and
-                market liquidity — then mapped to a clear buy/watch/hold signal.
+                Each set is scored 0-100 across forecast ROI, retirement status, community
+                demand, and market liquidity, then mapped to a buy, watch, or hold signal.
               </p>
             </BrickCard>
             <BrickCard accentTop="green">
@@ -118,8 +118,8 @@ export default async function HomePage() {
                 Benchmarked vs. S&amp;P 500
               </h3>
               <p className="type-body-sm text-slate-700 mt-2">
-                Every forecast is overlaid against a 10.5% S&amp;P 500 baseline so you can see whether a
-                given set actually beats the market.
+                Every forecast is overlaid against a 10.5% S&amp;P 500 baseline, so you can see
+                whether a given set actually beats the market.
               </p>
             </BrickCard>
           </div>
