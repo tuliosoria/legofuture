@@ -29,7 +29,7 @@ export function buildSecurityHeaders(): Array<{
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https://cdn.rebrickable.com https://www.pricecharting.com https://img.bricklink.com https://www.google-analytics.com https://*.googletagmanager.com",
-        "connect-src 'self' https://www.pricecharting.com https://trends.google.com https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://*.googletagmanager.com",
+        "connect-src 'self' https://www.pricecharting.com https://trends.google.com https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://*.googletagmanager.com https://formsubmit.co",
         "upgrade-insecure-requests",
       ].join("; "),
     },
