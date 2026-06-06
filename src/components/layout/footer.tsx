@@ -15,7 +15,7 @@ export function Footer() {
                 className="type-h3 text-sunshine-yellow mb-2"
                 style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
               >
-                LegoFuture
+                BricksFuture
               </p>
               <p className="type-body-sm text-slate-300 leading-relaxed">
                 Educational forecasting tools for LEGO sets.
@@ -75,13 +75,13 @@ export function Footer() {
 
           <div className="border-t border-slate-700 pt-6 text-center">
             <p className="type-body-sm text-slate-500">
-              © {year} LegoFuture. Educational tools only. Not financial advice.
+              © {year} BricksFuture. Educational tools only. Not financial advice.
             </p>
             <p className="mt-1 type-body-sm text-slate-500">
-              LEGO is a trademark of the LEGO Group. LegoFuture is not affiliated with or endorsed by the LEGO Group.
+              LEGO is a trademark of the LEGO Group. BricksFuture is not affiliated with or endorsed by the LEGO Group.
             </p>
             <p className="mt-1 type-body-sm text-slate-500">
-              LegoFuture is an eBay Partner Network affiliate; we earn commissions on qualifying purchases.
+              BricksFuture is an eBay Partner Network affiliate; we earn commissions on qualifying purchases.
             </p>
           </div>
         </div>

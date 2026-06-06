@@ -23,9 +23,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const set = (await loadLiveCuratedSet(slug)) ?? LEGO_SETS.find((s) => s.id === slug);
-  if (!set) return { title: "Set not found · LegoFuture" };
+  if (!set) return { title: "Set not found · BricksFuture" };
   return {
-    title: `${set.name} (#${set.setNumber}) · LegoFuture`,
+    title: `${set.name} (#${set.setNumber}) · BricksFuture`,
     description: `${set.signal}. ${set.thesis}`,
   };
 }

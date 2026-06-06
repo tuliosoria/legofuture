@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_NAME = "LegoFuture";
+const SITE_NAME = "BricksFuture";
 const SITE_DESCRIPTION =
   "Forecast LEGO set appreciation. Buy / hold / sell signals on 20+ popular sets including Star Wars UCS, Technic, Architecture, Modular Buildings, and more.";
 

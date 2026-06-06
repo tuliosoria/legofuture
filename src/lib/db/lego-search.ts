@@ -10,7 +10,7 @@ import gwpDenylistData from "@/lib/data/lego-ml/lego-catalog-gwp-denylist.json";
 import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json";
 
 /**
- * Source of truth for the LegoFuture catalog: DynamoDB table
+ * Source of truth for the BricksFuture catalog: DynamoDB table
  * `legofuture-cache`, partition `pk="CATALOG"`, sort key `sk="PRODUCT#<id>"`.
  * Populated by `scripts/sync-pricecharting-to-dynamo.mjs`.
  *

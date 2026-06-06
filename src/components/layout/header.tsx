@@ -30,7 +30,7 @@ export function Header() {
               className="type-h2 tracking-tight"
               style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}
             >
-              <span className="text-brick-red">Lego</span>
+              <span className="text-brick-red">Bricks</span>
               <span className="text-jet-black">Future</span>
             </span>
             <span

@@ -3,9 +3,9 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy · LegoFuture",
+  title: "Privacy Policy · BricksFuture",
   description:
-    "How LegoFuture collects, uses, and protects your data. What we don't collect, who we share with, and your rights.",
+    "How BricksFuture collects, uses, and protects your data. What we don't collect, who we share with, and your rights.",
 };
 
 const LAST_UPDATED = "June 6, 2026";
@@ -23,14 +23,14 @@ export default function PrivacyPage() {
       <BrickCard compact className="space-y-8">
         <p className="type-body text-slate-700">
           <strong className="text-jet-black">{op}</strong> (&ldquo;we,&rdquo; &ldquo;us,&rdquo; &ldquo;our&rdquo;)
-          provides educational market-analysis tools for LEGO sets at legofuture.com (the
+          provides educational market-analysis tools for LEGO sets at bricksfuture.com (the
           &ldquo;Service&rdquo;). This policy explains what data we collect, how we use it,
           who we share it with, and your rights.
         </p>
 
         <Section n="1" title="Who this policy covers">
           <p>
-            This policy applies to all visitors to legofuture.com. The Service does not
+            This policy applies to all visitors to bricksfuture.com. The Service does not
             require an account and is designed to collect as little personal data as
             possible.
           </p>

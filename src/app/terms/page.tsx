@@ -3,8 +3,8 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Use · LegoFuture",
-  description: "The terms and conditions that govern your use of LegoFuture.",
+  title: "Terms of Use · BricksFuture",
+  description: "The terms and conditions that govern your use of BricksFuture.",
 };
 
 const LAST_UPDATED = "June 6, 2026";
@@ -23,7 +23,7 @@ export default function TermsPage() {
         <p className="type-body text-slate-700">
           These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of{" "}
           <strong className="text-jet-black">{op}</strong> (the &ldquo;Service&rdquo;), operated
-          at legofuture.com. By accessing or using the Service, you agree to these Terms. If
+          at bricksfuture.com. By accessing or using the Service, you agree to these Terms. If
           you do not agree, do not use the Service.
         </p>
 

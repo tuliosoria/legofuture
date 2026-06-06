@@ -43,13 +43,13 @@ export async function POST(req: Request) {
     email,
     subject: subject || "(none)",
     message,
-    _subject: subject ? `LegoFuture: ${subject}` : "LegoFuture contact form",
+    _subject: subject ? `BricksFuture: ${subject}` : "BricksFuture contact form",
     _template: "table",
     _honey: honeypot,
   };
 
   try {
-    const origin = req.headers.get("origin") ?? "https://legofuture.com";
+    const origin = req.headers.get("origin") ?? "https://bricksfuture.com";
     const referer = req.headers.get("referer") ?? `${origin}/contact`;
 
     const res = await fetch(FORMSUBMIT_ENDPOINT, {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         // FormSubmit gates the /ajax/ endpoint on the Referer header.
         Referer: referer,
         Origin: origin,
-        "User-Agent": "Mozilla/5.0 (compatible; LegoFuture/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; BricksFuture/1.0)",
       },
       body: JSON.stringify(fsPayload),
     });
