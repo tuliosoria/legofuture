@@ -4,7 +4,8 @@ import { BrickCard } from "@/components/ui/BrickCard";
 import { SignalPill } from "@/components/ui/SignalPill";
 import { StatusTag } from "@/components/ui/StatusTag";
 import type { LegoSet } from "@/lib/domain/lego-set";
-import { annualRoiLabel, brickLinkImageUrl, ebayUrl, legoStoreUrl, roiPercent } from "@/lib/domain/forecast";
+import { annualRoiLabel, brickLinkImageUrl, legoStoreUrl, roiPercent } from "@/lib/domain/forecast";
+import { SeeOnEbayButton } from "@/components/buy-options/SeeOnEbayButton";
 
 interface Props {
   set: LegoSet;
@@ -64,14 +65,16 @@ export function BuyingListRow({ set, rank }: Props) {
           <p className={`type-body-sm font-semibold ${roi >= 0 ? "text-pure-green" : "text-brick-red"}`}>
             {roi >= 0 ? "+" : ""}{roi.toFixed(0)}% · {annualRoiLabel(set)}
           </p>
-          <a
-            href={ebayUrl(set)}
-            target="_blank"
-            rel="noopener nofollow noreferrer sponsored"
+          <SeeOnEbayButton
+            context={{
+              surface: "buyinglist",
+              productKey: set.id,
+              productName: set.name,
+              keywords: `LEGO ${set.setNumber} ${set.name} sealed`,
+            }}
+            label="Check eBay →"
             className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-pure-white px-3 py-1.5 type-body-sm font-medium hover:bg-sunshine-yellow transition-colors"
-          >
-            Check eBay →
-          </a>
+          />
           {set.status !== "Retired" && (
             <a
               href={legoStoreUrl(set)}

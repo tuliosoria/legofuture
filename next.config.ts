@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       },
       { protocol: "https", hostname: "www.pricecharting.com" },
       { protocol: "https", hostname: "img.bricklink.com" },
+      { protocol: "https", hostname: "i.ebayimg.com" },
+      { protocol: "https", hostname: "thumbs.ebaystatic.com" },
     ],
   },
   async redirects() {

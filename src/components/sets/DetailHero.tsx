@@ -7,10 +7,10 @@ import {
   annualRoiLabel,
   brickLinkImageUrl,
   brickLinkUrl,
-  ebayUrl,
   legoStoreUrl,
   roiPercent,
 } from "@/lib/domain/forecast";
+import { SeeOnEbayButton } from "@/components/buy-options/SeeOnEbayButton";
 
 interface Props {
   set: LegoSet;
@@ -90,18 +90,20 @@ export function DetailHero({ set }: Props) {
               Buy on LEGO.com →
             </a>
           )}
-          <a
-            href={ebayUrl(set)}
-            target="_blank"
-            rel="noopener nofollow noreferrer sponsored"
+          <SeeOnEbayButton
+            context={{
+              surface: "lego-detail",
+              productKey: set.id,
+              productName: set.name,
+              keywords: `LEGO ${set.setNumber} ${set.name} sealed`,
+            }}
+            label="Check eBay listings →"
             className={`inline-flex items-center justify-center rounded-chip border-2 border-jet-black px-4 py-2 type-body-sm font-semibold transition-all ${
               set.status === "Retired"
                 ? "bg-brick-red text-pure-white hover:-translate-x-px hover:-translate-y-px hover:shadow-click"
                 : "bg-pure-white hover:bg-sunshine-yellow"
             }`}
-          >
-            Check eBay listings →
-          </a>
+          />
           <a
             href={brickLinkUrl(set)}
             target="_blank"
