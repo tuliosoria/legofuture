@@ -84,6 +84,18 @@ export function BuyOptionsDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={title}>
       <div className="space-y-3">
+        <div
+          role="note"
+          aria-label="Affiliate disclosure"
+          className="rounded-card border-2 border-jet-black bg-sunshine-yellow px-3 py-2 type-caption font-semibold text-jet-black"
+        >
+          <span className="uppercase tracking-wider">Disclosure:</span>{" "}
+          <span className="font-normal">
+            Listings below are eBay Partner Network affiliate links. As an eBay
+            Partner, BricksFuture may earn a commission from qualifying
+            purchases. This never influences our forecasts.
+          </span>
+        </div>
         {state.status === "loading" && (
           <div className="space-y-3" aria-live="polite" aria-label="Loading listings">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -171,15 +183,23 @@ export function BuyOptionsDrawer({
                         })}
                       </span>
                     )}
-                    <a
-                      href={listing.affiliateUrl}
-                      target="_blank"
-                      rel="sponsored nofollow noopener"
-                      title="Affiliate link, we may earn a commission"
-                      className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-brick-red px-3 py-1.5 text-xs font-semibold text-pure-white hover:-translate-x-px hover:-translate-y-px hover:shadow-click transition-all"
-                    >
-                      View ↗
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <span
+                        aria-label="Affiliate link"
+                        className="rounded-chip border border-jet-black bg-pure-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-jet-black"
+                      >
+                        Ad
+                      </span>
+                      <a
+                        href={listing.affiliateUrl}
+                        target="_blank"
+                        rel="sponsored nofollow noopener"
+                        title="Affiliate link, we may earn a commission"
+                        className="inline-flex items-center justify-center rounded-chip border-2 border-jet-black bg-brick-red px-3 py-1.5 text-xs font-semibold text-pure-white hover:-translate-x-px hover:-translate-y-px hover:shadow-click transition-all"
+                      >
+                        View ↗
+                      </a>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -189,7 +209,11 @@ export function BuyOptionsDrawer({
 
         {state.status === "ready" && (
           <p className="pt-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            Links are eBay Partner Network affiliate. We may earn a commission.
+            All eBay links above are affiliate. We may earn a commission.{" "}
+            <a href="/terms#section-7" className="underline hover:text-jet-black">
+              Learn more
+            </a>
+            .
           </p>
         )}
       </div>

@@ -206,7 +206,7 @@ export default function TermsPage() {
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div id={`section-${n}`} className="scroll-mt-24">
       <h2 className="type-h3 text-jet-black mb-2">
         <span className="text-slate-400 mr-2">{n}.</span>
         {title}
