@@ -23,7 +23,7 @@ export default function AppleIcon() {
         }}
       >
         <div style={{ display: "flex", fontSize: 92, lineHeight: 1 }}>
-          <span style={{ color: "#D01012" }}>L</span>
+          <span style={{ color: "#D01012" }}>B</span>
           <span style={{ color: "#1B1B1B" }}>F</span>
         </div>
         <div
