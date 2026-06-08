@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { FirstVisitDisclaimer } from "@/components/layout/first-visit-disclaimer";
+import { GoogleAnalytics } from "@/components/layout/GoogleAnalytics";
 
 const jakarta = Plus_Jakarta_Sans({
   weight: "800",
@@ -61,6 +62,7 @@ export default function RootLayout({
       className={`${jakarta.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen antialiased flex flex-col">
+        <GoogleAnalytics />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
