@@ -14,7 +14,7 @@ const OPTIONS: { value: SortKey; label: string }[] = [
   { value: "upside", label: "ROI % ↓" },
   { value: "price-desc", label: "Price ↓" },
   { value: "price-asc", label: "Price ↑" },
-  { value: "confidence", label: "Confidence" },
+  { value: "confidence", label: "Data strength" },
   { value: "pieces-desc", label: "Pieces ↓" },
   { value: "pieces-asc", label: "Pieces ↑" },
   { value: "retirement", label: "Retirement year" },

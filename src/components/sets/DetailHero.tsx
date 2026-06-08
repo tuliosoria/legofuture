@@ -55,7 +55,9 @@ export function DetailHero({ set }: Props) {
           <SignalPill signal={set.signal} />
           <div className="flex items-center gap-2">
             <ConfidenceDots filled={set.confidence} />
-            <span className="type-body-sm text-slate-700">{set.confLabel} confidence</span>
+            <span className="type-body-sm text-slate-700">
+              {set.confLabel === "High" ? "Strong" : set.confLabel === "Medium" ? "Moderate" : "Thin"} data strength
+            </span>
           </div>
         </div>
 

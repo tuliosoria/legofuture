@@ -15,7 +15,7 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "upside", label: "ROI % (high → low)" },
   { value: "price-desc", label: "Price (high → low)" },
   { value: "price-asc", label: "Price (low → high)" },
-  { value: "confidence", label: "Confidence (high → low)" },
+  { value: "confidence", label: "Data strength (strong → thin)" },
   { value: "pieces-desc", label: "Pieces (high → low)" },
   { value: "pieces-asc", label: "Pieces (low → high)" },
   { value: "retirement", label: "Retirement year (soonest)" },

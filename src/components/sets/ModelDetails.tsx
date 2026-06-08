@@ -8,18 +8,18 @@ interface ModelDetailsProps {
 
 const COPY: Record<Confidence, { label: string; tagline: string; tone: string }> = {
   high: {
-    label: "High confidence",
-    tagline: "Strong history + peer support + signals aligned",
+    label: "Strong",
+    tagline: "Retired set with deep sold-comp history",
     tone: "text-pure-green",
   },
   medium: {
-    label: "Medium confidence",
+    label: "Moderate",
     tagline: "Adequate history; some signal noise",
     tone: "text-sunshine-yellow",
   },
   low: {
-    label: "Low confidence",
-    tagline: "Thin history or conflicting signals",
+    label: "Thin",
+    tagline: "New release or sparse secondary-market data",
     tone: "text-brick-red",
   },
 };
@@ -59,7 +59,12 @@ export function ModelDetails({
           </dd>
         </div>
         <div>
-          <dt className="type-body-sm text-slate-500">Confidence</dt>
+          <dt
+            className="type-body-sm text-slate-500"
+            title="How thick the input data is for this set — not how accurate the forecast will be. Retired sets with many monthly sold comps score Strong; new releases with thin secondary markets score Thin."
+          >
+            Data strength
+          </dt>
           <dd className={`type-body font-bold ${copy.tone}`}>{copy.label}</dd>
           <p className="type-body-sm text-slate-600 mt-0.5">{copy.tagline}</p>
         </div>

@@ -51,7 +51,7 @@ export default function MethodologyPage() {
         <ul className="list-disc pl-6 space-y-1">
           <li><strong>Community strength:</strong> Brick Insights aggregate rating (50%), Google Trends monthly search interest (25%), Reddit mention volume × engagement (25%). Components are optional; missing signals are redistributed pro-rata. Synced monthly.</li>
           <li><strong>Market liquidity:</strong> active listing depth as a proxy for how easy a set is to sell.</li>
-          <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price. Tight clusters = high confidence.</li>
+          <li><strong>Price agreement:</strong> dispersion of recent sold comps around the consensus price. Tight clusters = strong data.</li>
           <li><strong>Trailing annualised return:</strong> the slope of the set&rsquo;s observed price history.</li>
         </ul>
 
