@@ -19,9 +19,14 @@ export default function MethodologyPage() {
 
       <div className="prose prose-slate max-w-none type-body text-slate-700 space-y-4">
         <p>
-          BricksFuture publishes a 5-year price forecast for every set in our catalog. The base-case
-          forecast is the centerpiece, but every set also carries a bear and bull scenario so you can
-          see the realistic range.
+          BricksFuture publishes a 5-year price forecast for every set in our catalog. Forecasts are
+          produced by an open-source machine-learning model (gradient-boosted trees, XGBoost) trained
+          on three families of inputs: <strong>price history</strong> (monthly sealed comps from
+          PriceCharting plus recent eBay and BrickLink sold transactions),{" "}
+          <strong>set fundamentals</strong> (theme, piece count, release year, MSRP, retirement
+          status), and <strong>community engagement</strong> (Brick Insights ratings, Google Trends
+          search interest, and Reddit mention volume). Every set ships with a base-case projection
+          plus bear and bull scenarios so you can see the realistic range, not just a single number.
         </p>
 
         <h2 className="type-h3 mt-8" style={{ fontFamily: "var(--nf-jakarta, system-ui)", fontWeight: 800 }}>
