@@ -109,7 +109,7 @@ describe("forecast helpers", () => {
 
   it("brickLinkUrl points to catalog item page", () => {
     expect(brickLinkUrl({ setNumber: "10270" })).toBe(
-      "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10270-1",
+      "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10270-1#T=S",
     );
   });
 

@@ -81,9 +81,9 @@ export function ebayUrl(set: Pick<LegoSet, "name" | "setNumber">): string {
   return `https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=${campaign}&toolid=10001&mpre=${encodeURIComponent(base)}`;
 }
 
-/** BrickLink set page deep link. */
+/** BrickLink set page deep link — opens directly on the "For Sale" marketplace tab. */
 export function brickLinkUrl(set: Pick<LegoSet, "setNumber">): string {
-  return `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${set.setNumber}-1`;
+  return `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${set.setNumber}-1#T=S`;
 }
 
 /** BrickLink hosted set image (front-of-box). */
