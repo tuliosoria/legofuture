@@ -128,8 +128,8 @@ export default function MethodologyPage() {
           Disclosures
         </h2>
         <p>
-          BricksFuture earns affiliate commissions on qualifying eBay purchases originated from links on
-          this site. LEGO® is a trademark of the LEGO Group; BricksFuture is not affiliated with, endorsed
+          BricksFuture is completely free and earns no affiliate commissions; outbound eBay links carry no
+          affiliate tracking. LEGO® is a trademark of the LEGO Group; BricksFuture is not affiliated with, endorsed
           by, or sponsored by the LEGO Group.
         </p>
       </div>

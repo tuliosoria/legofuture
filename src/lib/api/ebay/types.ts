@@ -20,10 +20,10 @@ export interface EbayListing {
   itemId: string;
   title: string;
   /**
-   * Raw eBay product URL. Do NOT link to this directly from any
-   * user-clickable surface, affiliate attribution will be lost.
-   * Always pass through `wrapAffiliateUrl()` (see `./affiliate.ts`)
-   * or use the `getEbayAffiliateUrl()` helper.
+   * Raw eBay product URL. Route through `wrapAffiliateUrl()` (see
+   * `./affiliate.ts`) or `getEbayAffiliateUrl()` before linking so any
+   * stray EPN tracking params are stripped — the site is free with no
+   * affiliate links.
    */
   itemWebUrl: string;
   price: { value: string; currency: string };

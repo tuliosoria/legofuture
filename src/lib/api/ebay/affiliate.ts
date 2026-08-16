@@ -5,6 +5,10 @@ const EBAY_HOSTS = new Set([
   "m.ebay.com",
 ]);
 
+// eBay Partner Network commission/tracking params. BricksFuture no longer
+// participates in EPN — the site is free with no affiliate links or
+// commissions — so we strip every one of these from outbound eBay URLs
+// and never add them back. Links point straight at the plain listing.
 const EPN_PARAM_KEYS = [
   "mkcid",
   "mkrid",
@@ -15,13 +19,18 @@ const EPN_PARAM_KEYS = [
   "customid",
 ] as const;
 
-const CUSTOM_ID_MAX_LEN = 240;
-
 export interface WrapAffiliateOptions {
   customId?: string;
 }
 
-export function wrapAffiliateUrl(rawUrl: string, options?: WrapAffiliateOptions): string {
+/**
+ * Sanitize an eBay destination URL: verify it points at a real eBay host,
+ * then strip any pre-existing EPN commission/tracking params so the
+ * outbound link earns nothing and carries no attribution. The `options`
+ * argument is retained for call-site compatibility but ignored — we no
+ * longer attach a `customid`.
+ */
+export function wrapAffiliateUrl(rawUrl: string, _options?: WrapAffiliateOptions): string {
   const url = new URL(rawUrl);
   if (!EBAY_HOSTS.has(url.hostname)) {
     throw new Error(`Refusing to wrap non-eBay URL: ${url.hostname}`);
@@ -31,25 +40,13 @@ export function wrapAffiliateUrl(rawUrl: string, options?: WrapAffiliateOptions)
     url.searchParams.delete(key);
   }
 
-  url.searchParams.set("mkcid", "1");
-  url.searchParams.set("mkrid", process.env.EPN_ROVER_ID ?? "711-53200-19255-0");
-  url.searchParams.set("siteid", "0");
-  url.searchParams.set("campid", process.env.EPN_CAMPAIGN_ID ?? "5339119183");
-  url.searchParams.set("toolid", "80008");
-  url.searchParams.set("mkevt", "1");
-
-  if (options?.customId) {
-    url.searchParams.set("customid", options.customId.slice(0, CUSTOM_ID_MAX_LEN));
-  }
-
   return url.toString();
 }
 
 /**
- * Single chokepoint for converting an eBay listing into a
- * user-clickable affiliate-attributed URL. Use this from every
- * component that renders an eBay destination link so the six EPN
- * params are always present.
+ * Single chokepoint for turning an eBay listing into a clean,
+ * commission-free destination URL. Use this from every component that
+ * renders an eBay link so no EPN params ever leak back in.
  */
 export function getEbayAffiliateUrl(
   listing: { itemWebUrl: string },
@@ -61,9 +58,9 @@ export function getEbayAffiliateUrl(
 const EBAY_SEARCH_BASE = "https://www.ebay.com/sch/i.html";
 
 /**
- * Build a public-facing eBay search URL for sold completed sealed comps,
- * then route through affiliate attribution so outbound clicks earn EPN
- * commission and can be traced via customId.
+ * Build a public-facing eBay search URL for sold completed comps.
+ * Routed through the sanitizer so no EPN commission params are attached —
+ * the link is a plain, commission-free eBay search.
  */
 export function buildEbaySearchUrl(
   keywords: string,

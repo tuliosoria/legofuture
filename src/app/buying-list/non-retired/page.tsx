@@ -76,7 +76,7 @@ export default async function NonRetiredBuyingListPage() {
 
       <p className="type-caption text-slate-500 mt-8 leading-relaxed">
         Educational forecasts only. Not financial advice. Prices and signals update on a 1-hour cadence.
-        eBay links are affiliate; BricksFuture earns a small commission on qualifying purchases. LEGO is a
+        eBay links are free and carry no affiliate tracking; BricksFuture earns no commission. LEGO is a
         trademark of the LEGO Group; BricksFuture is not affiliated with or endorsed by the LEGO Group.
       </p>
     </main>

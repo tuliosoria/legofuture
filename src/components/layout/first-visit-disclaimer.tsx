@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "legofuture:disclaimer-dismissed";
+const STORAGE_KEY = "legofuture:disclaimer-dismissed:v2";
 
 export function FirstVisitDisclaimer() {
   const [visible, setVisible] = useState(false);
@@ -43,7 +43,11 @@ export function FirstVisitDisclaimer() {
           </strong>{" "}
           Forecasts are model estimates based on historical PriceCharting data
           and community signals. They are not guarantees. Verify all prices before
-          buying or selling.
+          buying or selling.{" "}
+          <strong className="font-semibold">
+            Totally free, from one fan to another:
+          </strong>{" "}
+          no affiliate links, no commissions, no ads. Enjoy!
         </p>
         <button
           type="button"

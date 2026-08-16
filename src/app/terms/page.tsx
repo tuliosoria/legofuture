@@ -91,12 +91,13 @@ export default function TermsPage() {
           </p>
         </Section>
 
-        <Section n="7" title="Affiliate disclosure">
+        <Section n="7" title="No affiliate links">
           <p>
-            {op} participates in the eBay Partner Network and may earn commissions on
-            qualifying purchases originated from links on the Service. Affiliate participation
-            does not influence forecast outputs, scores, or signals. We may add or remove
-            affiliate programs in the future.
+            {op} is completely free and carries no monetization. We do not
+            participate in the eBay Partner Network or any affiliate program,
+            and we earn no commission on purchases made through eBay links on
+            the Service. Outbound eBay links are plain links with no affiliate
+            or tracking parameters attached.
           </p>
         </Section>
 

@@ -81,7 +81,7 @@ export function Footer() {
               LEGO is a trademark of the LEGO Group. BricksFuture is not affiliated with or endorsed by the LEGO Group.
             </p>
             <p className="mt-1 type-body-sm text-slate-500">
-              BricksFuture is an eBay Partner Network affiliate; we earn commissions on qualifying purchases.
+              BricksFuture is totally free. No affiliate links, no commissions, no ads.
             </p>
           </div>
         </div>

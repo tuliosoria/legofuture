@@ -72,13 +72,10 @@ export function scenarioRoi(currentPrice: number, terminalPrice: number): number
   return ((terminalPrice - currentPrice) / currentPrice) * 100;
 }
 
-/** eBay deep link with optional EPN campaign ID. */
+/** Plain eBay search deep link. No affiliate/EPN tracking — the site is free. */
 export function ebayUrl(set: Pick<LegoSet, "name" | "setNumber">): string {
   const q = encodeURIComponent(`LEGO ${set.setNumber} ${set.name} sealed`);
-  const base = `https://www.ebay.com/sch/i.html?_nkw=${q}&_sop=15`;
-  const campaign = process.env.NEXT_PUBLIC_EBAY_CAMPAIGN_ID;
-  if (!campaign) return base;
-  return `https://rover.ebay.com/rover/1/711-53200-19255-0/1?campid=${campaign}&toolid=10001&mpre=${encodeURIComponent(base)}`;
+  return `https://www.ebay.com/sch/i.html?_nkw=${q}&_sop=15`;
 }
 
 /** BrickLink set page deep link — opens directly on the "For Sale" marketplace tab. */

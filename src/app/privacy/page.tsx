@@ -49,11 +49,6 @@ export default function PrivacyPage() {
               <strong>Contact-form submissions.</strong> If you send us a message, we
               collect the name, email address, subject, and message body you provide.
             </li>
-            <li>
-              <strong>Affiliate click metadata.</strong> When you click an eBay affiliate
-              link, eBay records that the click originated from {op} for commission
-              tracking. We do not see your eBay activity.
-            </li>
           </ul>
           <p className="mt-2">
             We do not currently use analytics scripts, advertising trackers, social-media
@@ -103,7 +98,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Hosting and CDN:</strong> processes requests and logs as described above.</li>
             <li><strong>PriceCharting, BrickLink, Rebrickable, Brick Insights, Google Trends, Reddit:</strong> read-only public-data sources we fetch from to build forecasts and signals. They do not receive any personal data about you from us.</li>
-            <li><strong>eBay Partner Network:</strong> when you click an outbound eBay link, eBay tracks the click for affiliate-commission purposes.</li>
+            <li><strong>eBay:</strong> outbound eBay links are plain links with no affiliate or commission tracking attached.</li>
           </ul>
         </Section>
 
