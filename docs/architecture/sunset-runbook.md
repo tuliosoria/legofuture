@@ -10,6 +10,14 @@ Browse observations use `ebay-asking-v1` keys, USD, new sealed condition, exact 
 
 PC API/CSV/history/image ingestion and synthetic/backfill entrypoints fail before configuration or writes. `sync-all` preserves independent catalog/eBay jobs and omits PC and synthetic generation. Old models and artifacts remain in Git/storage.
 
+## Active-listing display age
+
+The [eBay API License Agreement §8.1(c), Age of Displayed eBay Content](https://developer.ebay.com/join/api-license-agreement) distinguishes item listing information (no more than 6h older than the eBay site) from other eBay content (24h). It also requires disclosure when the listing shown is less current than the site. This is not a universal 24h listing TTL.
+
+Our conservative local display policy caps eBay asking observations at 6h since `observedAt`, even when a caller requests 24h. Stricter limits remain effective. Exactly 6h is eligible; 6h+1ms is withheld. New `fetchedAt`, cache reads and errors cannot renew `observedAt`. The open drawer also expires retained offers without refetching. Timestamp/collection age must be shown; validating freshness relative to the site and the required disclosure remains a pre-activation gate. This change does not enable live APIs, alter token TTL/daily quota reset, or make asking prices sold/market values.
+
+[§8.1(b), Public Display](https://developer.ebay.com/join/api-license-agreement) requires removal from the application when content is no longer publicly available on eBay. Before enabling display, review detection, immediate public suppression and the applicable removal/retention procedure. This is an operational gate, not an authorization to delete retained artifacts; none were deleted here.
+
 ## Before any rollout
 
 1. Reviewer verifies the branch, offline fixtures and retained artifacts. Product owner confirms the contractual cutoff timezone/hour; preparation target remains 20 October 2026 00:00 UTC, subscription end reported as 22 October.

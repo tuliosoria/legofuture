@@ -22,3 +22,9 @@ Independent reviewer regressions fixed: OAuth 429 honors Retry-After; standalone
 ## Gates and limitations
 
 No live provider, credential, production, import, retrain, push, merge or deployment was exercised. eBay entitlement/quota and all relevant publication/image/model rights remain unverified. Budget/deduplication/cooldown are process-local, so shared multiworker coordination is a production gate. Workflow contents and external schedules require sanitized owner review before rollout; no schedule was changed. See `sunset-runbook.md` and `provider-artifact-manifest.md` for the operational and licensing gates.
+
+## Follow-up: six-hour listing display ceiling
+
+The eBay display-age correction uses the [official API License Agreement §8.1(c)](https://developer.ebay.com/join/api-license-agreement): listing information has a 6h ceiling relative to the site; other content has a separate 24h rule. Local asking display is conservatively capped at 6h since observation, preserves stricter caller limits and never renews from cache fetch time. The drawer withholds expired offers, including an offer expiring while open, without refetching or deleting storage. §8.1(b) removal of no-longer-public content is documented as a pre-activation gate; no retained artifacts were deleted.
+
+RED→GREEN: two observation and two drawer regressions reproduced the old behavior. Focused checks: 18 tests passed. Full suite after this change: 30 files / 261 tests passed; TypeScript and lint exit 0 (same three existing warnings); `git diff --check` clean. No provider activation, token TTL or daily quota reset changed. The earlier offline build result above predates this focused follow-up; UI rendering is covered by the new component tests and TypeScript check.

@@ -13,7 +13,8 @@
 ## Global Constraints
 
 - Data-alvo 22/10/2026; horário desconhecido; preparação proposta 20/10/2026 00:00 UTC.
-- 10 s por requisição; anúncio elegível por até 24 h, sujeito aos termos do fornecedor.
+- 10 s por requisição. Exibição de item listing eBay: clamp em no máximo 6h desde observedAt, preservando limites menores; 6h aceita, 6h+1ms retido. [eBay API License Agreement §8.1(c)](https://developer.ebay.com/join/api-license-agreement): outros conteúdos têm regra distinta de 24h, e conteúdo defasado exige divulgação de idade. Não confundir essa política de exibição com TTL OAuth ou reset diário de quota.
+- Gate anterior à ativação: revalidar defasagem em relação ao site e remoção de conteúdo que deixou de ser público (§8.1(b)). Não executar deleção de artefatos retidos nesta implementação; manter API live gated.
 - Uma renovação após 401; 403 terminal; 429 com cooldown. Nenhum retry sem limite.
 - Sem deleção, segredos, produção ou importação; push/deploy precisam de autorização própria.
 - IDs, licença e condição exatos; asking/reference jamais sold ou âncora de forecast.
@@ -32,7 +33,7 @@
 
 **Interfaces:** Produces `PriceObservation`, `ProviderResult`, `evaluateObservation(observation: PriceObservation, policy: ObservationPolicy, now: Date): ProviderResult`, `isForecastAnchor(result: ProviderResult): boolean`; `ObservationPolicy` contém maxAgeMs, expectedProductId, expectedCurrency, expectedCondition e publicationAllowed.
 
-- [ ] Escrever teste: asking válido é available mas isForecastAnchor=false; sold exato/publicável e amostra positiva pode ser true; NaN, preço <=0, data futura, ausência de observedAt e licença desconhecida são unavailable; idade >24 h é stale; fetchedAt novo não altera isso.
+- [ ] Escrever teste: asking válido é available mas isForecastAnchor=false; sold exato/publicável e amostra positiva pode ser true; NaN, preço <=0, data futura, ausência de observedAt e licença desconhecida são unavailable; asking eBay em 6h é available mas nunca âncora vendida, em 6h+1ms é stale/retido mesmo com policy de 24h; limite menor é preservado; fetchedAt novo não altera isso.
 - [ ] Executar `npx vitest run src/lib/domain/__tests__/price-observation.test.ts`; confirmar falha pelo contrato ausente.
 - [ ] Implementar contrato da ADR e manifesto por caminho/fonte/licença, sem ler dados pessoais ou apagar artefatos.
 - [ ] Reexecutar teste e confirmar PASS; revisar diff e fazer commit só dos três arquivos.
