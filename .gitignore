@@ -43,3 +43,5 @@ lego-ml/__pycache__/
 infra/lego-ml-retrainer/.aws-sam/
 .cache/
 models/
+
+.superpowers/
