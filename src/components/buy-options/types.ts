@@ -5,6 +5,10 @@ export type BuyOptionsSurface =
 
 export interface BuyOptionsListing {
   itemId: string;
+  kind: "asking";
+  provider: "ebay";
+  observedAt: string;
+  sampleSize: 1;
   title: string;
   price?: { value: string; currency: string };
   condition?: string;

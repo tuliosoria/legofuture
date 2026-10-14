@@ -147,7 +147,9 @@ export function BuyOptionsDrawer({
                       {listing.title}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 type-caption text-slate-500">
-                      {listing.condition && <span>{listing.condition}</span>}
+                      <span>{listing.condition ?? "Condition not specified"}</span>
+                      <span>eBay asking price · 1 offer</span>
+                      <time dateTime={listing.observedAt}>Collected {listing.observedAt}</time>
                       {listing.seller && (
                         <span>
                           {listing.seller.username}

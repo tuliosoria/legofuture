@@ -1,3 +1,4 @@
+import { isValuationSuspended, VALUATION_UNAVAILABLE } from "./sunset-policy";
 import type {
   Confidence,
   Forecast,
@@ -65,9 +66,9 @@ export interface SetForecastBreakdownRow {
 
 export interface SetForecast {
   setId: string;
-  recommendation: Recommendation;
+  recommendation: Recommendation | null;
   confidence: Confidence;
-  scenarios: {
+  scenarios: null | {
     pessimist: SetForecastScenario;
     moderate: SetForecastScenario;
     optimist: SetForecastScenario;
@@ -82,7 +83,7 @@ export interface SetForecast {
   breakdown: SetForecastBreakdownRow[];
   forecastEligible: boolean;
   ineligibleReason?: string;
-  updatedAt: string;
+  updatedAt: string | null;
   currentPrice: number | null;
   modelVersion: string | null;
 }
@@ -254,6 +255,7 @@ export function forecastForSet(
   history: HistoryPoint[],
   manifest: ModelManifestSummary | null = null
 ): SetForecast {
+  if (isValuationSuspended()) return { setId: set.id, recommendation: null, confidence: "low", scenarios: null, projectionSeries: [], drivers: [], breakdown: [], forecastEligible: false, ineligibleReason: VALUATION_UNAVAILABLE, updatedAt: null, currentPrice: null, modelVersion: null };
   const currentPrice = pickPrice(pricing);
   const updatedAt = new Date().toISOString();
   const modelVersion = manifest?.available ? manifest.version : null;
@@ -359,7 +361,8 @@ export function computeForecast(
   product: LegoSet,
   pricing: ProductPricing | null,
   baseline: PricingBaseline | null = null,
-): Forecast {
+): Forecast | null {
+  if (isValuationSuspended()) return null;
   // Resolve current price with three-tier fallback:
   //   1. live market price (PriceCharting / BrickLink / Brickset / eBay merge)
   //   2. original MSRP
@@ -465,13 +468,8 @@ export function computeForecast(
   const moderate = scenarios.moderate;
 
   // Investment screener fields
-  // Prefer soldComps90d (eBay comps from sync) over PriceCharting salesVolume
-  const salesVol =
-    product.soldComps90d != null
-      ? product.soldComps90d
-      : pricing?.salesVolume
-        ? Number(pricing.salesVolume)
-        : null;
+  // Legacy soldComps90d contains active listings and is never sales liquidity.
+  const salesVol = null;
   const liquidityScore = computeLiquidityScore(salesVol);
   // Use raw price (before sanity cap) so outlier detection catches corrupt data
   // even after the cap has reset currentPrice to a safe value.
@@ -702,7 +700,8 @@ function mlSignalFromCagr(cagr: number): "Buy" | "Hold" | "Sell" {
 export async function computeMlForecast(
   product: LegoSet,
   pricing: ProductPricing | null
-): Promise<Forecast> {
+): Promise<Forecast | null> {
+  if (isValuationSuspended()) return null;
   const id = product.id;
   const currentPrice =
     pricing?.newPrice ?? pricing?.cibPrice ?? pricing?.loosePrice ?? product.originalMsrp ?? 0;

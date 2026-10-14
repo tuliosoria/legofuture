@@ -1,14 +1,20 @@
 #!/usr/bin/env node
+import { assertOAuthResponse, isTerminalEbayError } from "./lib/ebay-response.mjs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, BatchWriteCommand, GetCommand, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
+import { aggregateAskingListings, askingRows } from "./lib/ebay-observation.mjs";
+
+const VERIFIED_LIMIT = Number(process.env.EBAY_VERIFIED_DAILY_LIMIT);
+if (!Number.isSafeInteger(VERIFIED_LIMIT) || VERIFIED_LIMIT <= 0) throw new Error("missing-config: verified eBay quota required");
+let browseCalls = 0;
 const REQUIRED = ["EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET"];
 for (const k of REQUIRED) if (!process.env[k]) { console.error(`[ebay-sync] FATAL: ${k} required`); process.exit(1); }
 
 const TABLE = process.env.DYNAMODB_TABLE || "legofuture-cache";
 const REGION = process.env.AWS_REGION || "us-east-1";
 const RATE_LIMIT_MS = Number(process.env.EBAY_RATE_LIMIT_MS || 700);
-const PROGRESS_KEY = { pk: "META#EBAY_PROGRESS", sk: "v1" };
+const PROGRESS_KEY = { pk: "META#EBAY_ASKING_PROGRESS", sk: "v1" };
 const PROGRESS_FLUSH_EVERY = 25;
 const RESUME = process.env.EBAY_RESUME !== "false";
 
@@ -21,38 +27,28 @@ async function getAccessToken(force = false) {
   const basic = Buffer.from(`${process.env.EBAY_CLIENT_ID}:${process.env.EBAY_CLIENT_SECRET}`).toString("base64");
   const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: "grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope",
   });
-  if (!res.ok) throw new Error(`eBay token HTTP ${res.status}`);
+  assertOAuthResponse(res);
   const data = await res.json();
   cachedToken = data.access_token;
   return cachedToken;
 }
 
-async function searchSold(setNum, attempt = 0) {
+async function searchAsking(setNum, attempt = 0) {
   const token = await getAccessToken();
   const q = encodeURIComponent(`LEGO ${setNum}`);
   const url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${q}&limit=50&filter=buyingOptions:{FIXED_PRICE}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401 && attempt < 1) { await getAccessToken(true); return searchSold(setNum, attempt + 1); }
-  if (res.status === 429) {
-    const backoff = Math.min(60000, 5000 * Math.pow(2, attempt));
-    console.warn(`[ebay-sync] 429 — backoff ${backoff}ms`);
-    await sleep(backoff);
-    if (attempt < 4) return searchSold(setNum, attempt + 1);
-    return null;
-  }
+  if (++browseCalls > VERIFIED_LIMIT) throw new Error("quota: app budget exhausted");
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401 && attempt < 1) { await getAccessToken(true); return searchAsking(setNum, attempt + 1); }
+  if (res.status === 429) throw new Error("quota: stop job; preserve previous observations");
+  if (res.status === 401 || res.status === 403) throw new Error("auth: stop job");
   if (!res.ok) return null;
   const data = await res.json();
-  const prices = (data.itemSummaries || [])
-    .map((i) => Number(i.price?.value))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  if (prices.length === 0) return null;
-  prices.sort((a, b) => a - b);
-  const median = prices[Math.floor(prices.length / 2)];
-  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-  return { medianPrice: median, avgPrice: avg, count: prices.length, minPrice: prices[0], maxPrice: prices[prices.length - 1] };
+  return aggregateAskingListings(data.itemSummaries || [], setNum);
 }
 
 async function loadAllSetNums() {
@@ -97,38 +93,15 @@ async function main() {
     const found = setNums.indexOf(lastProcessed);
     if (found >= 0) { startIdx = found + 1; console.log(`[ebay-sync] resuming after ${lastProcessed} (idx=${startIdx})`); }
   }
-  const nowIso = new Date().toISOString();
-  const yyyyMm = nowIso.slice(0, 7);
   const t0 = Date.now();
   let i = startIdx;
   for (; i < setNums.length; i++) {
     const setNum = setNums[i];
-    const agg = await searchSold(setNum).catch((e) => { console.warn(`[ebay-sync] ${setNum}: ${e.message}`); return null; });
+    const agg = await searchAsking(setNum).catch((e) => { console.warn(`[ebay-sync] ${setNum}: ${e.message}`); if (isTerminalEbayError(e)) throw e; return null; });
     if (agg) {
       await ddb.send(new BatchWriteCommand({
         RequestItems: { [TABLE]: [
-          { PutRequest: { Item: {
-            pk: `HISTORY#PRODUCT#${setNum}`,
-            sk: `ebay-sold#${yyyyMm}`,
-            source: "ebay",
-            medianPrice: agg.medianPrice,
-            avgPrice: agg.avgPrice,
-            minPrice: agg.minPrice,
-            maxPrice: agg.maxPrice,
-            count: agg.count,
-            capturedAt: nowIso,
-          } } },
-          { PutRequest: { Item: {
-            pk: `PRICING#PRODUCT#${setNum}`,
-            sk: "ebay-sold",
-            source: "ebay",
-            avgSoldPrice: agg.avgPrice,
-            medianSoldPrice: agg.medianPrice,
-            soldCount: agg.count,
-            minPrice: agg.minPrice,
-            maxPrice: agg.maxPrice,
-            capturedAt: nowIso,
-          } } },
+          ...askingRows(setNum, agg, new Date().toISOString()).map(Item => ({ PutRequest: { Item } })),
         ] },
       }));
     }

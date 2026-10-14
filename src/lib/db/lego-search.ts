@@ -4,7 +4,7 @@ import { GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import type { LegoSet } from "@/lib/types/lego";
 import { eraFor, coerceTheme } from "@/lib/data/lego-themes";
 import { getDynamo, getTableName } from "./dynamo";
-import { isEligibleForDashboard } from "@/lib/domain/lego-catalog-eligibility";
+import { SUNSET_CATALOG } from "@/lib/data/sunset-catalog";
 import { inferProductType } from "@/lib/domain/lego-product-classifier";
 import gwpDenylistData from "@/lib/data/lego-ml/lego-catalog-gwp-denylist.json";
 import catalogOverridesData from "@/lib/data/lego-ml/lego-catalog-overrides.json";
@@ -97,13 +97,6 @@ function applyOverridesAndComputed(set: LegoSet): LegoSet {
   return merged;
 }
 
-function stripKeys(item: Record<string, unknown>): LegoSet {
-  const { pk: _pk, sk: _sk, ...rest } = item;
-  void _pk;
-  void _sk;
-  return rest as unknown as LegoSet;
-}
-
 function deriveSlug(name: string | undefined, id: string): string {
   const base = (name ?? id).toString().toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -161,8 +154,7 @@ function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
     imageUrl: (item.imageUrl as string | undefined) ?? "",
     slug: (item.slug as string | undefined) ?? deriveSlug(name, id),
     enrichmentStatus: item.enrichmentStatus as LegoSet["enrichmentStatus"],
-    pricingProviderCount: (item.pricingProviderCount as number | undefined) ?? 0,
-    soldComps90d: typeof item.soldComps90d === "number" ? (item.soldComps90d as number) : undefined,
+    forecastEligible: false,
   };
   return set;
 }
@@ -175,7 +167,7 @@ function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
  * @deprecated Pass `orphanCap` explicitly; prefer /api/sets/catalog for pagination.
  */
 
-export async function loadStoredCatalog(opts?: {
+async function loadStoredCatalogRows(opts?: {
   includeOrphans?: boolean;
   /**
    * Maximum orphan (Rebrickable-only) rows to return. Defaults to no cap.
@@ -187,7 +179,7 @@ export async function loadStoredCatalog(opts?: {
   const ddb = getDynamo();
   const table = getTableName();
   if (!ddb || !table) {
-    throw new Error("DynamoDB not configured (DYNAMODB_TABLE env var missing).");
+    return fallbackCatalog();
   }
   const includeOrphans = opts?.includeOrphans === true;
   const all: LegoSet[] = [];
@@ -199,10 +191,6 @@ export async function loadStoredCatalog(opts?: {
     // returns matches over the wire.
     const filterParts = ["begins_with(pk, :p)", "sk = :sk"];
     const eav: Record<string, unknown> = { ":p": "CATALOG#PRODUCT#", ":sk": "v1" };
-    if (!includeOrphans) {
-      filterParts.push("attribute_exists(pricingProviderCount) AND pricingProviderCount >= :one");
-      eav[":one"] = 1;
-    }
     const res = await ddb.send(new ScanCommand({
       TableName: table,
       FilterExpression: filterParts.join(" AND "),
@@ -223,13 +211,21 @@ export async function loadStoredCatalog(opts?: {
 
   const cap = opts?.orphanCap;
   if (includeOrphans) return cap !== undefined ? all.slice(0, cap) : all;
-  return all.filter(isEligibleForDashboard);
+  return all;
+}
+
+/** Built-in identity fallback requires no pricing provider or cloud configuration. */
+function fallbackCatalog(): LegoSet[] {
+ return SUNSET_CATALOG.map(set=>applyOverridesAndComputed({id:set.id,setNumber:set.setNumber,name:set.name,theme:coerceTheme(set.theme),releaseYear:set.year,retired:set.status==='Retired',pieceCount:set.pieces,minifigCount:0,originalMsrp:0,imageUrl:'',slug:set.id,forecastEligible:false}));
+}
+export async function loadStoredCatalog(opts?: {includeOrphans?:boolean;orphanCap?:number}):Promise<LegoSet[]> {
+ try { return await loadStoredCatalogRows(opts); } catch { return fallbackCatalog(); }
 }
 
 export async function getProductById(id: string): Promise<LegoSet | null> {
   const client = getDynamo();
   const table = getTableName();
-  if (!client || !table) return null;
+  if (!client || !table) return fallbackCatalog().find(set=>set.id===id || set.setNumber===id) ?? null;
 
   try {
     const res = await client.send(
@@ -239,7 +235,8 @@ export async function getProductById(id: string): Promise<LegoSet | null> {
       })
     );
     if (!res.Item) return null;
-    const set = stripKeys(res.Item as Record<string, unknown>);
+    const set = normalizeStoredRow(res.Item as Record<string, unknown>);
+    if (!set) return null;
     if (GWP_DENYLIST.has(set.id) || isNonRetailSetId(set)) return null;
     return applyOverridesAndComputed(set);
   } catch (err) {

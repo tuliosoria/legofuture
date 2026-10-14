@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fetches eBay active-listing counts per LEGO set and writes soldComps90d
+ * Fetches eBay active-listing counts per LEGO set and writes activeListingCount
  * to each CATALOG#PRODUCT# DDB row so the catalog Scan picks it up
  * at no extra read cost during page load.
  *
@@ -10,6 +10,8 @@
  * Required env vars: EBAY_CLIENT_ID, EBAY_CLIENT_SECRET
  */
 
+import { assertOAuthResponse, isTerminalEbayError } from "./lib/ebay-response.mjs";
+import { activeCountUpdate } from "./lib/ebay-observation.mjs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -17,6 +19,9 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 
+const VERIFIED_LIMIT = Number(process.env.EBAY_VERIFIED_DAILY_LIMIT);
+if (!Number.isSafeInteger(VERIFIED_LIMIT) || VERIFIED_LIMIT <= 0) throw new Error("missing-config: verified eBay quota required");
+let browseCalls = 0;
 const REQUIRED = ["EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET"];
 for (const k of REQUIRED) {
   if (!process.env[k]) {
@@ -47,13 +52,14 @@ async function getToken(force = false) {
   ).toString("base64");
   const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope",
   });
-  if (!res.ok) throw new Error(`eBay token HTTP ${res.status}`);
+  assertOAuthResponse(res);
   const data = await res.json();
   _token = data.access_token;
   return _token;
@@ -65,23 +71,20 @@ async function fetchListingCount(setNumber, attempt = 0) {
   const url =
     `https://api.ebay.com/buy/browse/v1/item_summary/search` +
     `?q=${q}&limit=10&filter=buyingOptions:{FIXED_PRICE}`;
+  if (++browseCalls > VERIFIED_LIMIT) throw new Error("quota: app budget exhausted");
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401 && attempt < 1) {
     await getToken(true);
     return fetchListingCount(setNumber, attempt + 1);
   }
-  if (res.status === 429) {
-    const backoff = Math.min(60000, 5000 * Math.pow(2, attempt));
-    console.warn(`[ebay-comps] 429 — backoff ${backoff}ms`);
-    await sleep(backoff);
-    if (attempt < 3) return fetchListingCount(setNumber, attempt + 1);
-    return null;
-  }
+  if (res.status === 429) throw new Error("quota: stop job; preserve previous count");
+  if (res.status === 401 || res.status === 403) throw new Error("auth: stop job");
   if (!res.ok) return null;
   const data = await res.json();
-  return data.total ?? data.itemSummaries?.length ?? 0;
+  return data.total ?? (Array.isArray(data.itemSummaries) ? data.itemSummaries.length : null);
 }
 
 async function loadCatalogSetNumbers() {
@@ -117,23 +120,19 @@ async function main() {
     LIMIT === Infinity ? setNumbers : setNumbers.slice(0, LIMIT);
   console.log(`[ebay-comps] Syncing ${toSync.length} sets...`);
 
-  const now = new Date().toISOString();
   let ok = 0;
   let failed = 0;
 
   for (const setNumber of toSync) {
     try {
       const count = await fetchListingCount(setNumber);
+      const update = activeCountUpdate(count, new Date().toISOString());
+      if (!update) { failed++; continue; }
       await ddb.send(
         new UpdateCommand({
           TableName: TABLE,
           Key: { pk: `CATALOG#PRODUCT#${setNumber}`, sk: "v1" },
-          UpdateExpression:
-            "SET soldComps90d = :v, ebayCompsUpdatedAt = :ts",
-          ExpressionAttributeValues: {
-            ":v": count ?? 0,
-            ":ts": now,
-          },
+          ...update,
         })
       );
       console.log(`  ${setNumber} — ${count ?? "err"} listings`);
@@ -141,6 +140,7 @@ async function main() {
     } catch (err) {
       console.warn(`  ${setNumber} — error: ${err.message}`);
       failed++;
+      if (isTerminalEbayError(err)) throw err;
     }
     await sleep(RATE_LIMIT_MS);
   }

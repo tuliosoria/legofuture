@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { synthesizeBaselinePrice } from "@/lib/domain/lego-baseline";
+import type { LegoTheme } from "@/lib/types/lego";
 import type { PricingBaseline } from "@/lib/domain/lego-baseline";
 
 const FULL_BASELINE: PricingBaseline = {
@@ -28,7 +29,7 @@ const FULL_BASELINE: PricingBaseline = {
   },
 };
 
-const product = (overrides: Partial<{ pieceCount: number; theme: string; retired: boolean }> = {}) => ({
+const product = (overrides: Partial<{ pieceCount: number; theme: LegoTheme; retired: boolean }> = {}) => ({
   pieceCount: 1000,
   theme: "Star Wars" as never,
   retired: false,

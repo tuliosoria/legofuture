@@ -19,14 +19,14 @@ describe("loadStoredCatalog", () => {
     const res = await loadStoredCatalog({ includeOrphans: true });
     expect(res).toHaveLength(2);
   });
-  it("filters out non-eligible by default", async () => {
+  it("keeps catalog identity independent of pricing eligibility", async () => {
     mockSend.mockResolvedValueOnce({ Items: [
       { id: "A", pricingProviderCount: 2, pieceCount: 100, originalMsrp: 29.99 },
       { id: "B", pricingProviderCount: 0, pieceCount: 100, originalMsrp: 29.99 },
     ], LastEvaluatedKey: undefined });
     const res = await loadStoredCatalog();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(res.map((r: any) => r.id)).toEqual(["A"]);
+    expect(res.map((r: any) => r.id)).toEqual(["A", "B"]);
   });
   it("populates productType on loaded items", async () => {
     mockSend.mockResolvedValueOnce({
@@ -42,12 +42,12 @@ describe("loadStoredCatalog", () => {
     expect(polybag?.productType).toBe("Polybag");
     expect(falcon?.productType).toBe("Boxed Set");
   });
-  it("exposes soldComps90d from DDB row", async () => {
+  it("quarantines ambiguous soldComps90d from DDB row", async () => {
     mockSend.mockResolvedValueOnce({
       Items: [{ id: "C", name: "Test Set", setNumber: "12345", pricingProviderCount: 1, pieceCount: 200, originalMsrp: 49, soldComps90d: 15 }],
       LastEvaluatedKey: undefined,
     });
     const res = await loadStoredCatalog({ includeOrphans: true });
-    expect(res[0]?.soldComps90d).toBe(15);
+    expect(res[0]?.soldComps90d).toBeUndefined();
   });
 });
