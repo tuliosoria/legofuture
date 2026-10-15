@@ -1,6 +1,6 @@
 # Sunset rollout and recovery — BricksFuture
 
-This branch is a local candidate. No push, deployment, ingestion, schedule dispatch, retraining, credential change, or remote data inspection has been performed.
+This branch is a release candidate. On 15 October 2026 the user authorized publication preparation, a feature-branch push and PR after checks. Merge and rollout remain coordinated by the root operator; this preparer has performed no deploy, live ingestion, schedule dispatch, retraining or credential/IAM change.
 
 ## Current behavior
 
@@ -21,10 +21,10 @@ Our conservative local display policy caps eBay asking observations at 6h since 
 ## Before any rollout
 
 1. Reviewer verifies the branch, offline fixtures and retained artifacts. Product owner confirms the contractual cutoff timezone/hour; preparation target remains 20 October 2026 00:00 UTC, subscription end reported as 22 October.
-2. Owner supplies sanitized workflow/scheduler definitions. Disable external PC ingestion, images, history/backfill and retrain schedules; inspect deployment build configuration for disabled entrypoints. Workflow contents and operational accounts were deliberately outside this patch.
+2. Coordinator reported AWS weekly retrain rule `DISABLED` (rate 7 days, Lambda `legofuture-ml-retrainer`) and no GitHub workflows in this repository. These are coordinator-supplied operational observations; the preparer did not inspect accounts. Keep the rule disabled. Any further scheduler work remains coordinated separately.
 3. Verify rights separately for identities, prices, images and derived models. No retention/publication license is assumed from a cached row.
 4. Verify eBay production approval, actual quota by app/keyset and terms. `EBAY_VERIFIED_DAILY_LIMIT` must be positive; missing configuration makes Browse unavailable. No default quota is invented. The request policy's budget, dedupe and cooldown are process-local; a durable shared allocator is required before enabling multiple workers or concurrent ingestion processes. Single-process guards do not establish a global production quota guarantee.
-5. Confirm explicit authorization before push, canary or deployment. No data imports are part of this candidate's validation.
+5. Feature push/PR is now authorized after local checks; root coordinates merge/canary/deployment. No data imports are part of this candidate's validation.
 
 ## Local checks
 
@@ -43,3 +43,9 @@ Real eBay approval/quota and licensing are unverified. Global multiworker quota 
 ## Local implementation review notes
 
 Independent review identified and fixed OAuth 429 Retry-After handling (including standalone-job termination), stalled response bodies escaping the request deadline, ambiguous sealed/multi-set matching, and the baseline generator's legacy sold-row consumption. All have offline regression coverage. The baseline generator is disabled rather than rewriting or deleting its outputs. Build/font mocks do not establish provider availability.
+
+## Clean release artifact
+
+`node scripts/prepare-sunset-deploy.mjs` is local-only: it audits the real standalone build and creates a fresh `.sunset-deploy-*` Amplify layout without AWS calls. It refuses retained price/model/media markers and mock-font artifacts. It excludes all `public/`, environment files, caches and retained source files from the copy while leaving originals unchanged. Do not use the older upload/deploy script for assembly because it blindly copies public assets. Target for root-controlled rollout: app `d2lnw5t0h096c1` (`legofuture-compute`), `us-east-1`.
+
+The release uses an explicit 50-set identity-only allowlist, without importing retained financial datasets, media overrides or model bundles. Public forecast and catalog facades have no runtime import of the retained implementations. Browse is hard-disabled independently of inherited environment values, including standalone collection entrypoints. Lack of written PC redistribution/retention evidence remains recorded; no license is inferred from storage or subscription access.

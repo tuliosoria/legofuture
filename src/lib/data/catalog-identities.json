@@ -1,0 +1,452 @@
+[
+  {
+    "id": "modular-bookshop",
+    "name": "Bookshop",
+    "setNumber": "10270",
+    "theme": "Modular Buildings",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 2504
+  },
+  {
+    "id": "modular-detective",
+    "name": "Detective's Office",
+    "setNumber": "10246",
+    "theme": "Modular Buildings",
+    "status": "Retired",
+    "year": 2015,
+    "pieces": 2262
+  },
+  {
+    "id": "modular-corner-garage",
+    "name": "Corner Garage",
+    "setNumber": "10264",
+    "theme": "Modular Buildings",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 2569
+  },
+  {
+    "id": "modular-police",
+    "name": "Police Station",
+    "setNumber": "10278",
+    "theme": "Modular Buildings",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 2923
+  },
+  {
+    "id": "modular-sanctum",
+    "name": "Sanctum Sanctorum",
+    "setNumber": "76218",
+    "theme": "Modular Buildings",
+    "status": "Retired",
+    "year": 2022,
+    "pieces": 2708
+  },
+  {
+    "id": "ucs-millennium-falcon",
+    "name": "Millennium Falcon",
+    "setNumber": "75192",
+    "theme": "Star Wars UCS",
+    "status": "Retiring soon",
+    "year": 2017,
+    "pieces": 7541
+  },
+  {
+    "id": "ucs-at-at",
+    "name": "AT-AT",
+    "setNumber": "75313",
+    "theme": "Star Wars UCS",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 6785
+  },
+  {
+    "id": "ucs-tie-interceptor",
+    "name": "UCS TIE Interceptor",
+    "setNumber": "75382",
+    "theme": "Star Wars UCS",
+    "status": "Retired",
+    "year": 2023,
+    "pieces": 1931
+  },
+  {
+    "id": "ucs-star-destroyer",
+    "name": "Imperial Star Destroyer",
+    "setNumber": "75252",
+    "theme": "Star Wars UCS",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 4784
+  },
+  {
+    "id": "ucs-razor-crest",
+    "name": "The Razor Crest",
+    "setNumber": "75331",
+    "theme": "Star Wars UCS",
+    "status": "Retired",
+    "year": 2022,
+    "pieces": 6187
+  },
+  {
+    "id": "ucs-xwing",
+    "name": "UCS X-Wing Starfighter",
+    "setNumber": "75355",
+    "theme": "Star Wars UCS",
+    "status": "Retired",
+    "year": 2023,
+    "pieces": 1949
+  },
+  {
+    "id": "icons-eiffel",
+    "name": "Eiffel Tower",
+    "setNumber": "10307",
+    "theme": "Icons",
+    "status": "Retiring soon",
+    "year": 2022,
+    "pieces": 10001
+  },
+  {
+    "id": "icons-titanic",
+    "name": "Titanic",
+    "setNumber": "10294",
+    "theme": "Icons",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 9090
+  },
+  {
+    "id": "icons-concorde",
+    "name": "Concorde",
+    "setNumber": "10318",
+    "theme": "Icons",
+    "status": "Active",
+    "year": 2023,
+    "pieces": 2083
+  },
+  {
+    "id": "icons-space-shuttle",
+    "name": "NASA Space Shuttle Discovery",
+    "setNumber": "10283",
+    "theme": "Icons",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 2354
+  },
+  {
+    "id": "icons-artemis",
+    "name": "NASA Artemis Space Launch System",
+    "setNumber": "10341",
+    "theme": "Icons",
+    "status": "Active",
+    "year": 2023,
+    "pieces": 1508
+  },
+  {
+    "id": "botanical-bonsai",
+    "name": "Bonsai Tree",
+    "setNumber": "10281",
+    "theme": "Icons",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 878
+  },
+  {
+    "id": "botanical-orchid",
+    "name": "Orchid",
+    "setNumber": "10311",
+    "theme": "Icons",
+    "status": "Retired",
+    "year": 2022,
+    "pieces": 608
+  },
+  {
+    "id": "botanical-sunflowers",
+    "name": "Sunflowers",
+    "setNumber": "10340",
+    "theme": "Icons",
+    "status": "Retired",
+    "year": 2024,
+    "pieces": 327
+  },
+  {
+    "id": "technic-bugatti",
+    "name": "Bugatti Chiron",
+    "setNumber": "42083",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 3599
+  },
+  {
+    "id": "technic-lamborghini",
+    "name": "Lamborghini Sián FKP 37",
+    "setNumber": "42115",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 3696
+  },
+  {
+    "id": "technic-mclaren",
+    "name": "McLaren Formula E",
+    "setNumber": "42141",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2022,
+    "pieces": 1432
+  },
+  {
+    "id": "technic-porsche-911",
+    "name": "Porsche 911 RSR",
+    "setNumber": "42096",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 1580
+  },
+  {
+    "id": "technic-peugeot",
+    "name": "Peugeot 9X8 24H Le Mans",
+    "setNumber": "42156",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2023,
+    "pieces": 1775
+  },
+  {
+    "id": "technic-ford-gt40",
+    "name": "Ford GT40 Le Mans",
+    "setNumber": "42154",
+    "theme": "Technic",
+    "status": "Retired",
+    "year": 2023,
+    "pieces": 1466
+  },
+  {
+    "id": "hp-hogwarts-castle",
+    "name": "Hogwarts Castle",
+    "setNumber": "71043",
+    "theme": "Harry Potter",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 6020
+  },
+  {
+    "id": "hp-diagon-alley",
+    "name": "Diagon Alley",
+    "setNumber": "75978",
+    "theme": "Harry Potter",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 5544
+  },
+  {
+    "id": "hp-diagon-expansion",
+    "name": "Diagon Alley Expansion",
+    "setNumber": "76422",
+    "theme": "Harry Potter",
+    "status": "Retired",
+    "year": 2023,
+    "pieces": 3010
+  },
+  {
+    "id": "ideas-grand-piano",
+    "name": "Grand Piano",
+    "setNumber": "21323",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 3662
+  },
+  {
+    "id": "ideas-treehouse",
+    "name": "Tree House",
+    "setNumber": "21318",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 3036
+  },
+  {
+    "id": "ideas-typewriter",
+    "name": "Typewriter",
+    "setNumber": "21327",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 2079
+  },
+  {
+    "id": "ideas-ship-bottle",
+    "name": "Ship in a Bottle",
+    "setNumber": "92177",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 962
+  },
+  {
+    "id": "ideas-central-perk",
+    "name": "Central Perk",
+    "setNumber": "21319",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 1070
+  },
+  {
+    "id": "ideas-dinosaurs",
+    "name": "Dinosaur Fossils",
+    "setNumber": "21320",
+    "theme": "Ideas",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 910
+  },
+  {
+    "id": "creator-grand-carousel",
+    "name": "Grand Carousel",
+    "setNumber": "10257",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2017,
+    "pieces": 2670
+  },
+  {
+    "id": "creator-rollercoaster",
+    "name": "Roller Coaster",
+    "setNumber": "10261",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 4124
+  },
+  {
+    "id": "creator-vw-camper",
+    "name": "Volkswagen Camper Van",
+    "setNumber": "10220",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2011,
+    "pieces": 1332
+  },
+  {
+    "id": "creator-haunted-house",
+    "name": "Haunted House",
+    "setNumber": "10273",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 3231
+  },
+  {
+    "id": "creator-ford-mustang",
+    "name": "Ford Mustang",
+    "setNumber": "10265",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 1471
+  },
+  {
+    "id": "creator-vw-beetle",
+    "name": "Volkswagen Beetle",
+    "setNumber": "10252",
+    "theme": "Creator Expert",
+    "status": "Retired",
+    "year": 2016,
+    "pieces": 1167
+  },
+  {
+    "id": "sw-cloud-city",
+    "name": "Cloud City",
+    "setNumber": "75222",
+    "theme": "Star Wars",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 2812
+  },
+  {
+    "id": "sw-mos-eisley",
+    "name": "Mos Eisley Cantina",
+    "setNumber": "75290",
+    "theme": "Star Wars",
+    "status": "Retired",
+    "year": 2020,
+    "pieces": 3187
+  },
+  {
+    "id": "sw-sandcrawler",
+    "name": "Sandcrawler",
+    "setNumber": "75220",
+    "theme": "Star Wars",
+    "status": "Retired",
+    "year": 2018,
+    "pieces": 3296
+  },
+  {
+    "id": "sw-bad-batch",
+    "name": "Bad Batch Attack Shuttle",
+    "setNumber": "75314",
+    "theme": "Star Wars",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 969
+  },
+  {
+    "id": "marvel-avengers-tower",
+    "name": "Avengers Tower",
+    "setNumber": "76269",
+    "theme": "Marvel",
+    "status": "Active",
+    "year": 2023,
+    "pieces": 5201
+  },
+  {
+    "id": "marvel-daily-bugle",
+    "name": "Daily Bugle",
+    "setNumber": "76178",
+    "theme": "Marvel",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 3772
+  },
+  {
+    "id": "dc-batman-1989",
+    "name": "Batmobile (1989)",
+    "setNumber": "76139",
+    "theme": "DC",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 3306
+  },
+  {
+    "id": "dc-batmobile-tumbler",
+    "name": "Batman Tumbler",
+    "setNumber": "76240",
+    "theme": "DC",
+    "status": "Retired",
+    "year": 2021,
+    "pieces": 2049
+  },
+  {
+    "id": "architecture-empire-state",
+    "name": "Empire State Building",
+    "setNumber": "21046",
+    "theme": "Architecture",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 1767
+  },
+  {
+    "id": "architecture-paris",
+    "name": "Paris Skyline",
+    "setNumber": "21044",
+    "theme": "Architecture",
+    "status": "Retired",
+    "year": 2019,
+    "pieces": 649
+  }
+]

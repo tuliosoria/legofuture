@@ -1,3 +1,4 @@
 import 'server-only';
-import { LEGO_SETS } from './sets';
-export const SUNSET_CATALOG = LEGO_SETS.map(({id,name,setNumber,theme,year,status,pieces}) => ({id,name,setNumber,theme,year,status,pieces}));
+import identities from './catalog-identities.json';
+/** Public identity-only allowlist; retained financial source datasets are not imported. */
+export const SUNSET_CATALOG = identities;

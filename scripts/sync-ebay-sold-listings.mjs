@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./lib/ebay-browse-disabled.mjs";
 import { assertOAuthResponse, isTerminalEbayError } from "./lib/ebay-response.mjs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, BatchWriteCommand, GetCommand, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";

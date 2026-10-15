@@ -1,53 +1,8 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
-
-vi.mock("server-only", () => ({}));
-
-const mockSend = vi.fn();
-vi.mock("@/lib/db/dynamo", () => ({
-  getDynamo: () => ({ send: mockSend }),
-  getTableName: () => "legofuture-cache",
-}));
-
-import { loadStoredCatalog } from "@/lib/db/lego-search";
-
-describe("loadStoredCatalog", () => {
-  beforeEach(() => mockSend.mockReset());
-  it("returns all CATALOG rows via Scan pagination", async () => {
-    mockSend
-      .mockResolvedValueOnce({ Items: [{ id: "75192", name: "Falcon", pricingProviderCount: 2 }], LastEvaluatedKey: { pk: "x" } })
-      .mockResolvedValueOnce({ Items: [{ id: "10299", name: "Real Madrid", pricingProviderCount: 1 }], LastEvaluatedKey: undefined });
-    const res = await loadStoredCatalog({ includeOrphans: true });
-    expect(res).toHaveLength(2);
-  });
-  it("keeps catalog identity independent of pricing eligibility", async () => {
-    mockSend.mockResolvedValueOnce({ Items: [
-      { id: "A", pricingProviderCount: 2, pieceCount: 100, originalMsrp: 29.99 },
-      { id: "B", pricingProviderCount: 0, pieceCount: 100, originalMsrp: 29.99 },
-    ], LastEvaluatedKey: undefined });
-    const res = await loadStoredCatalog();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(res.map((r: any) => r.id)).toEqual(["A", "B"]);
-  });
-  it("populates productType on loaded items", async () => {
-    mockSend.mockResolvedValueOnce({
-      Items: [
-        { id: "A", name: "Mini Police Station", setNumber: "30451", pricingProviderCount: 1, pieceCount: 54, originalMsrp: 4.99 },
-        { id: "B", name: "Millennium Falcon", setNumber: "75192", pricingProviderCount: 2, pieceCount: 7541, originalMsrp: 849 },
-      ],
-      LastEvaluatedKey: undefined,
-    });
-    const res = await loadStoredCatalog({ includeOrphans: true });
-    const polybag = res.find((r) => r.id === "A");
-    const falcon = res.find((r) => r.id === "B");
-    expect(polybag?.productType).toBe("Polybag");
-    expect(falcon?.productType).toBe("Boxed Set");
-  });
-  it("quarantines ambiguous soldComps90d from DDB row", async () => {
-    mockSend.mockResolvedValueOnce({
-      Items: [{ id: "C", name: "Test Set", setNumber: "12345", pricingProviderCount: 1, pieceCount: 200, originalMsrp: 49, soldComps90d: 15 }],
-      LastEvaluatedKey: undefined,
-    });
-    const res = await loadStoredCatalog({ includeOrphans: true });
-    expect(res[0]?.soldComps90d).toBeUndefined();
-  });
+import {vi,describe,it,expect} from 'vitest';
+vi.mock('server-only',()=>({}));
+import {loadStoredCatalog,getProductById,getProductBySlug} from '@/lib/db/lego-search';
+import {SUNSET_CATALOG} from '@/lib/data/sunset-catalog';
+describe('publication identity boundary',()=>{
+ it('preserves the approved identity allowlist without remote metadata or prices',async()=>{const sets=await loadStoredCatalog({includeOrphans:true});expect(sets.map(set=>set.id)).toEqual(SUNSET_CATALOG.map(set=>set.id));for(const set of sets){expect(set.imageUrl).toBe('');expect(set.forecastEligible).toBe(false);expect(set.soldComps90d).toBeUndefined();expect(set.pricingProviderCount).toBeUndefined();}});
+ it('keeps id, set-number and slug lookup working offline',async()=>{const first=SUNSET_CATALOG[0];expect((await getProductById(first.id))?.name).toBe(first.name);expect((await getProductById(first.setNumber))?.id).toBe(first.id);expect((await getProductBySlug(first.id))?.setNumber).toBe(first.setNumber);expect(await getProductById('unknown')).toBeNull();});
 });

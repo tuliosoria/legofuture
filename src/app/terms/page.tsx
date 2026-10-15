@@ -103,11 +103,10 @@ export default function TermsPage() {
 
         <Section n="8" title="Data sources and accuracy">
           <p>
-            Pricing and metadata are sourced from third parties including PriceCharting,
-            BrickLink, eBay, Rebrickable, Brick Insights, Google Trends, and Reddit. Data may
-            be delayed, incomplete, or inaccurate. We make no representation that any price,
-            forecast, or signal is current or correct at the moment you read it. Verify
-            independently before making any purchase or sale.
+            The current release displays curated set identities. Automated pricing, forecasts,
+            sold-liquidity rankings, PriceCharting publication and eBay Browse collection are suspended.
+            Retained datasets and models are not evidence of publication rights. Catalog information
+            may be incomplete or inaccurate; verify independently before making any purchase or sale.
           </p>
         </Section>
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./lib/ebay-browse-disabled.mjs";
 /**
  * Fetches eBay active-listing counts per LEGO set and writes activeListingCount
  * to each CATALOG#PRODUCT# DDB row so the catalog Scan picks it up

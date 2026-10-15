@@ -45,3 +45,6 @@ infra/lego-ml-retrainer/.aws-sam/
 models/
 
 .superpowers/
+
+# Local audited deployment candidates (never published automatically)
+.sunset-deploy-*/
