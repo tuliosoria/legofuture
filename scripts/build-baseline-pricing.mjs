@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./lib/pricecharting-sunset.mjs";
 /**
  * build-baseline-pricing.mjs
  *

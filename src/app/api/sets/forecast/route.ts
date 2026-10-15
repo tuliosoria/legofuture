@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProductBySlug, getProductById } from "@/lib/db/lego-search";
-import { getPricing } from "@/lib/domain/lego-estimate";
 import { forecastForSet } from "@/lib/domain/lego-forecast";
-import { loadHistory } from "@/lib/db/lego-history";
 import { enforceIpRateLimit } from "@/lib/db/rate-limit";
-import { getLatestModelManifest } from "@/lib/ml/lego-forecast-models";
+
 
 export const dynamic = "force-dynamic";
 
@@ -32,18 +30,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Set not found" }, { status: 404 });
   }
 
-  const [pricing, history, manifest] = await Promise.all([
-    getPricing(product),
-    loadHistory(product, "new-sealed"),
-    getLatestModelManifest(),
-  ]);
-
-  const forecast = forecastForSet(product, pricing, history, manifest);
+  const forecast = forecastForSet(product, null, []);
 
   return NextResponse.json(forecast, {
     headers: {
       "Cache-Control": "public, max-age=300",
-      "X-Data-Freshness": forecast.updatedAt,
+
     },
   });
 }

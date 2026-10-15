@@ -29,7 +29,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 const SITE_NAME = "BricksFuture";
 const SITE_DESCRIPTION =
-  "Forecast LEGO set appreciation. Buy / hold / sell signals on 20+ popular sets including Star Wars UCS, Technic, Architecture, Modular Buildings, and more.";
+  "Browse LEGO sets and current offers. Forecasts and sold-price rankings are suspended pending verified data.";
 
 export const metadata: Metadata = {
   applicationName: SITE_NAME,

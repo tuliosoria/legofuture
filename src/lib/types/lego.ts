@@ -96,7 +96,7 @@ export interface LegoSet {
   pricingProviderCount?: number;
   productType?: ProductType;
   investmentUniverse?: InvestmentUniverse;
-  /** eBay sold comps in last 90 days — populated by sync:ebay-comps script */
+  /** @deprecated Legacy Browse active search count mislabeled as sales. Never consume for valuation/liquidity. */
   soldComps90d?: number;
 }
 

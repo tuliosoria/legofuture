@@ -2,6 +2,10 @@ import { searchEbayByKeywords, wrapAffiliateUrl } from "@/lib/api/ebay";
 
 export interface BuyOptionsListing {
   itemId: string;
+  kind: "asking";
+  provider: "ebay";
+  observedAt: string;
+  sampleSize: 1;
   title: string;
   price?: { value: string; currency: string };
   condition?: string;
@@ -32,11 +36,16 @@ export async function fetchEbayListings(
     filter: "buyingOptions:{FIXED_PRICE}",
   });
 
+  const observedAt = new Date().toISOString();
   return (browse.itemSummaries ?? []).map((item) => ({
     itemId: item.itemId,
+    kind: "asking",
+    provider: "ebay",
+    observedAt,
+    sampleSize: 1,
     title: item.title,
     price: item.price,
-    condition: item.condition,
+    condition: item.condition ?? "Condition not specified",
     seller:
       item.seller && item.seller.username
         ? {

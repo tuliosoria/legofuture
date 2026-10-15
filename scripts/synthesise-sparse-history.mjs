@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./lib/pricecharting-sunset.mjs";
 /**
  * Synthesise sparse history for the 50 MVP curated sets.
  *

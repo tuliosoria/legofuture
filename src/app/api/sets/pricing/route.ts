@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(body, {
     headers: {
       "Cache-Control": "public, max-age=300",
-      "X-Data-Freshness": updatedAt ?? new Date().toISOString(),
     },
   });
 }

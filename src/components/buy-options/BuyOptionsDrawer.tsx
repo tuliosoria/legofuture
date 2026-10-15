@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Sheet } from "@/components/ui/Sheet";
 import type { BuyOptionsContext, BuyOptionsListing } from "./types";
+import { EBAY_LISTING_MAX_DISPLAY_AGE_MS, isEbayListingDisplayable } from "@/lib/domain/price-observation";
 
 type DrawerState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "empty" }
+  | { status: "expired" }
   | { status: "ready"; listings: BuyOptionsListing[] };
 
 interface BuyOptionsDrawerProps {
@@ -65,7 +67,8 @@ export function BuyOptionsDrawer({
         if (listings.length === 0) {
           setState({ status: "empty" });
         } else {
-          setState({ status: "ready", listings });
+          const current = listings.filter(listing => isEbayListingDisplayable(listing.observedAt, Date.now()));
+          setState(current.length ? { status: "ready", listings: current } : {status: "expired"});
         }
       })
       .catch((err: unknown) => {
@@ -78,6 +81,21 @@ export function BuyOptionsDrawer({
       controller.abort();
     };
   }, [open, context]);
+
+  // An open drawer must not retain a listing beyond the display-age ceiling.
+  // Expiration only withholds local display; it neither refetches nor deletes storage.
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    const expiresAt = Math.min(...state.listings.map(listing => Date.parse(listing.observedAt) + EBAY_LISTING_MAX_DISPLAY_AGE_MS));
+    const timer = setTimeout(() => {
+      setState(current => {
+        if (current.status !== "ready") return current;
+        const listings = current.listings.filter(listing => isEbayListingDisplayable(listing.observedAt, Date.now()));
+        return listings.length ? {status: "ready", listings} : {status: "expired"};
+      });
+    }, Math.max(1, expiresAt - Date.now() + 1));
+    return () => clearTimeout(timer);
+  }, [state]);
 
   const title = context ? `eBay listings: ${context.productName}` : "eBay listings";
 
@@ -111,6 +129,8 @@ export function BuyOptionsDrawer({
             <p className="mt-1 text-xs text-jet-black">{state.message}</p>
           </div>
         )}
+
+        {state.status === "expired" && <p role="status">Offers expired. Close and reopen to refresh.</p>}
 
         {state.status === "empty" && (
           <p className="py-6 text-center type-body-sm text-slate-700">
@@ -147,7 +167,9 @@ export function BuyOptionsDrawer({
                       {listing.title}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 type-caption text-slate-500">
-                      {listing.condition && <span>{listing.condition}</span>}
+                      <span>{listing.condition ?? "Condition not specified"}</span>
+                      <span>eBay asking price · 1 offer</span>
+                      <time dateTime={listing.observedAt}>Collected {listing.observedAt}</time>
                       {listing.seller && (
                         <span>
                           {listing.seller.username}

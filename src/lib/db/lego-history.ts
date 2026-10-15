@@ -1,3 +1,4 @@
+import { isValuationSuspended } from "@/lib/domain/sunset-policy";
 import "server-only";
 
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
@@ -29,6 +30,7 @@ export async function loadHistory(
   product: LegoSet,
   condition: LegoCondition = "new-sealed"
 ): Promise<HistoryPoint[]> {
+  if (isValuationSuspended()) return [];
   const key = cacheKey(product.id, condition);
   const cached = await cacheGet<HistoryPoint[]>(HISTORY_CACHE_TYPE, key);
   if (cached) return cached;

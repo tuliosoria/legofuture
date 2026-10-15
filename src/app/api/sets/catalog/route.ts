@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricing } from "@/lib/domain/lego-estimate";
 import { computeForecast } from "@/lib/domain/lego-forecast";
-import { loadBaseline } from "@/lib/domain/lego-baseline";
 import { matchesFreeText, matchesStatus } from "@/lib/domain/lego-filter";
 import type { LegoSet, ProductPricing } from "@/lib/types/lego";
 
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
   const themeFilter = sp.get("theme") ?? "";
   const statusFilter = sp.get("status") ?? "all";
   const sort = sp.get("sort") ?? "name";
-  const modeParam = sp.get("mode") ?? "investment";
+
   const includeOrphans = sp.get("includeOrphans") === "1";
 
   if (!Number.isInteger(pageRaw) || pageRaw < 1) {
@@ -68,9 +67,6 @@ export async function GET(request: NextRequest) {
 
   // --- server-side filtering -----------------------------------------------
   let filtered = catalog.filter((set: LegoSet) => {
-    if (modeParam === "investment" && set.investmentUniverse !== "InvestableSet") return false;
-    if (modeParam === "tracker" && set.investmentUniverse !== "RetiredTracker") return false;
-    if (modeParam === "collector" && set.investmentUniverse !== "CollectorCatalog") return false;
     if (q && !matchesFreeText(set, q)) return false;
     if (themeFilter && set.theme !== themeFilter) return false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,11 +98,11 @@ export async function GET(request: NextRequest) {
   const hasMore = start + limit < total;
 
   // --- compute forecasts for this page only ---------------------------------
-  const baseline = await loadBaseline();
+
   const items = await Promise.all(
     pageItems.map(async (product) => {
       const pricing = await getPricing(product);
-      const forecast = computeForecast(product, pricing ?? DEFAULT_PRICING, baseline);
+      const forecast = computeForecast(product, pricing ?? DEFAULT_PRICING);
       return { product, forecast };
     })
   );

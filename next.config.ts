@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
         hostname: "cdn.rebrickable.com",
         pathname: "/media/sets/**",
       },
-      { protocol: "https", hostname: "www.pricecharting.com" },
       { protocol: "https", hostname: "img.bricklink.com" },
       { protocol: "https", hostname: "i.ebayimg.com" },
       { protocol: "https", hostname: "thumbs.ebaystatic.com" },
