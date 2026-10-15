@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** LOCAL ONLY. Assembles an audited Amplify layout; no AWS API, upload or deployment. */
-import {cpSync,existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,statSync,writeFileSync} from 'node:fs';
+import {cpSync,rmSync,existsSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,statSync,writeFileSync} from 'node:fs';
 import {join,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const forbiddenContent = /pricecharting\.com|["']?proj5y["']?\s*:|medianSoldPrice|avgSoldPrice|learner_model_param|gradient_booster|lego-forecast\.retained|lego-search\.retained|lego-forecast-[135]y\.json/;
@@ -18,12 +18,18 @@ export function auditSunsetBuild(root) {
  if(!fonts.length || fonts.some(file=>statSync(file).size<1000 || readFileSync(file).subarray(0,4).toString()!=='wOF2')) throw new Error('real WOFF2 font assets required; mock-font builds cannot be staged');
  return {fontFiles:fonts.length,appFiles:files(server).length};
 }
-export function prepareSunsetDeploy(root=process.cwd()) {
+export function prepareSunsetDeploy(root=process.cwd(), output) {
  root=resolve(root);
  const audit=auditSunsetBuild(root);
  const standalone=join(root,'.next/standalone');
  if(!existsSync(join(standalone,'server.js'))) throw new Error('standalone server missing');
- const stage=mkdtempSync(join(root,'.sunset-deploy-'));
+ // Only the known generated CI directory may be replaced; never arbitrary source paths.
+ const stage=output===undefined?mkdtempSync(join(root,'.sunset-deploy-')):resolve(root,output);
+ if(output!==undefined) {
+  if(stage!==join(root,'.amplify-hosting')) throw new Error('output must be the generated .amplify-hosting directory');
+  rmSync(stage,{recursive:true,force:true});
+  mkdirSync(stage,{recursive:true});
+ }
  const compute=join(stage,'compute/default');
  mkdirSync(compute,{recursive:true});
  cpSync(standalone,compute,{recursive:true,filter:path=>!relative(standalone,path).split(/[\\/]/).some(segment=>segment==='public'||segment==='cache'||segment.startsWith('.env')||segment.includes('.retained')||segment==='bundled')});
@@ -38,4 +44,8 @@ export function prepareSunsetDeploy(root=process.cwd()) {
  writeFileSync(join(stage,'release-audit.json'),JSON.stringify({...audit,browse:'disabled',publicMedia:'excluded',retainedArtifacts:'not copied; originals preserved',target:{appId:'d2lnw5t0h096c1',region:'us-east-1'},deployExecuted:false},null,2));
  return stage;
 }
-if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) console.log(prepareSunsetDeploy());
+if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+ const args=process.argv.slice(2);
+ if(args.length && (args.length!==2 || args[0]!=='--output')) throw new Error('usage: prepare-sunset-deploy.mjs [--output .amplify-hosting]');
+ console.log(prepareSunsetDeploy(process.cwd(),args[1]));
+}

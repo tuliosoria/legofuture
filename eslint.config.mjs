@@ -6,6 +6,6 @@ const require = createRequire(import.meta.url);
 const nextCoreWebVitals = require("eslint-config-next/core-web-vitals");
 
 /** @type {import('eslint').Linter.Config[]} */
-const eslintConfig = [{ ignores: [".sunset-deploy-*/**"] }, ...nextCoreWebVitals];
+const eslintConfig = [{ ignores: [".sunset-deploy-*/**", ".amplify-hosting/**"] }, ...nextCoreWebVitals];
 
 export default eslintConfig;
