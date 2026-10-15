@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci --ignore-scripts
         - |
           : > .env.production
           for key in AWS_REGION DYNAMODB_TABLE PRICECHARTING_API_TOKEN REBRICKABLE_API_KEY LEGAL_OPERATOR_NAME LEGAL_CONTACT_EMAIL PRIVACY_REQUEST_EMAIL LEGAL_BUSINESS_ADDRESS LEGAL_CONTACT_URL LEGO_ML_MODEL_SOURCE LEGO_ML_PUBLISH_ENABLED LEGO_ML_OUTPUT_DIR OWNED_DATA_ASSET_BUCKET OWNED_DATA_ASSET_PREFIX EBAY_CLIENT_ID EBAY_CLIENT_SECRET EPN_CAMPAIGN_ID EPN_ROVER_ID FORMSUBMIT_EMAIL; do
@@ -14,9 +14,10 @@ frontend:
           done
     build:
       commands:
-        - npm run build
+        - npm run verify
+        - node scripts/prepare-sunset-deploy.mjs --output .amplify-hosting
   artifacts:
-    baseDirectory: .next
+    baseDirectory: .amplify-hosting
     files:
       - '**/*'
   cache:
