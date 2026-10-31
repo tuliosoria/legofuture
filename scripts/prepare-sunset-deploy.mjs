@@ -44,7 +44,11 @@ export function prepareSunsetDeploy(root=process.cwd(), output) {
  writeFileSync(join(stage,'release-audit.json'),JSON.stringify({...audit,browse:'disabled',publicMedia:'excluded',retainedArtifacts:'not copied; originals preserved',target:{appId:'d2lnw5t0h096c1',region:'us-east-1'},deployExecuted:false},null,2));
  return stage;
 }
-if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+import { prepareNativeSunset } from './lib/native-sunset-package.mjs';
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url) && process.argv.includes('--native')) {
+ if (process.argv.length !== 3) throw new Error('usage: prepare-sunset-deploy.mjs --native');
+ console.log(prepareNativeSunset(process.cwd(), { requireFonts: true, contentPattern: forbiddenContent, identityAssets: ['src/lib/data/catalog-identities.json'] }));
+} else if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
  const args=process.argv.slice(2);
  if(args.length && (args.length!==2 || args[0]!=='--output')) throw new Error('usage: prepare-sunset-deploy.mjs [--output .amplify-hosting]');
  console.log(prepareSunsetDeploy(process.cwd(),args[1]));

@@ -24,10 +24,10 @@ it('supports a repeatable CI output while preserving retained source data',()=>{
  expect(readFileSync(join(root,'public/pc-media/retained.jpg'),'utf8')).toBe('retained original');
  expect(()=>prepareSunsetDeploy(root,'public')).toThrow('output');
 });
-it('CI verifies then packages the custom Amplify deployment layout',()=>{
+it('CI verifies then prepares the native Next deployment layout',()=>{
  const config=readFileSync('amplify.yml','utf8');
- expect(config).toContain('baseDirectory: .amplify-hosting');
+ expect(config).toContain('baseDirectory: .next');
  expect(config).toContain('npm run verify');
- expect(config).toContain('node scripts/prepare-sunset-deploy.mjs --output .amplify-hosting');
+ expect(config).toContain('node scripts/prepare-sunset-deploy.mjs --native');
  expect(config.indexOf('npm run verify')).toBeLessThan(config.indexOf('node scripts/prepare-sunset-deploy.mjs'));
 });
