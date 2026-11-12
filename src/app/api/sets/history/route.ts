@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(history, {
     headers: {
       "Cache-Control": "public, max-age=300",
+      "X-Data-Freshness": new Date().toISOString(),
     },
   });
 }

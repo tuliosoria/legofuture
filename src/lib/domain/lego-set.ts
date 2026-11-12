@@ -11,7 +11,6 @@ export type LegoSetSignal = "Strong Buy" | "Buy" | "Watch" | "Hold" | "Sell";
 export type LegoSetConfLabel = "High" | "Medium" | "Low";
 
 export interface LegoSet {
-  marketStatus?: "unavailable";
   id: string;
   name: string;
   setNumber: string;

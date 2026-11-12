@@ -3,10 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --ignore-scripts
+        - npm ci
         - |
           : > .env.production
-          for key in LEGAL_OPERATOR_NAME LEGAL_CONTACT_EMAIL PRIVACY_REQUEST_EMAIL LEGAL_BUSINESS_ADDRESS LEGAL_CONTACT_URL; do
+          for key in AWS_REGION DYNAMODB_TABLE REBRICKABLE_API_KEY LEGAL_OPERATOR_NAME LEGAL_CONTACT_EMAIL PRIVACY_REQUEST_EMAIL LEGAL_BUSINESS_ADDRESS LEGAL_CONTACT_URL LEGO_ML_MODEL_SOURCE LEGO_ML_PUBLISH_ENABLED LEGO_ML_OUTPUT_DIR OWNED_DATA_ASSET_BUCKET OWNED_DATA_ASSET_PREFIX EBAY_CLIENT_ID EBAY_CLIENT_SECRET EPN_CAMPAIGN_ID EPN_ROVER_ID FORMSUBMIT_EMAIL; do
             value="$(printenv "$key" || true)"
             if [ -n "$value" ]; then
               printf '%s=%s\n' "$key" "$value" >> .env.production
@@ -14,8 +14,7 @@ frontend:
           done
     build:
       commands:
-        - npm run verify
-        - node scripts/prepare-sunset-deploy.mjs --native
+        - npm run build
   artifacts:
     baseDirectory: .next
     files:

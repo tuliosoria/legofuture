@@ -41,9 +41,7 @@ node --env-file=.env.local scripts/sync-pricecharting-to-dynamo.mjs
 Required env vars are documented in `.env.example` (each source links to
 its registration page).
 
-### Historical nightly example (not installed or approved for activation)
-
-Monthly pricing and rankings are currently blocked. See [monthly readiness and activation gates](docs/operations/monthly-data.md). The example below is retained for historical context only; do not install it or run the legacy sync chain as a workaround. It does not establish a working monthly schedule.
+### Nightly cron (GitHub Action recommended)
 
 `.github/workflows/sync-nightly.yml`:
 

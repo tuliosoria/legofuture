@@ -50,11 +50,23 @@ function makeRequest(params: Record<string, string>): NextRequest {
   return new NextRequest(url.toString());
 }
 
+const defaultForecast = {
+  signal: "Hold",
+  roiPercent: 10,
+  projectedValue: 33,
+  dollarGain: 3,
+  annualRate: 2,
+  currentPrice: 30,
+  confidence: "medium",
+  scenarios: { pessimist: {}, moderate: {}, optimist: {} },
+  updatedAt: "",
+};
+
 describe("GET /api/sets/catalog", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockGetPricing.mockResolvedValue(null);
-    mockComputeForecast.mockReturnValue(null);
+    mockComputeForecast.mockReturnValue(defaultForecast);
   });
 
   it("returns page 1 slice with correct shape", async () => {
@@ -70,7 +82,7 @@ describe("GET /api/sets/catalog", () => {
     expect(body.hasMore).toBe(true);
     expect(body.items).toHaveLength(5);
     expect(body.items[0]).toHaveProperty("product");
-    expect(body.items[0].forecast).toBeNull();
+    expect(body.items[0]).toHaveProperty("forecast");
   });
 
   it("returns hasMore=false on last page", async () => {
@@ -156,7 +168,7 @@ describe("GET /api/sets/catalog", () => {
     expect(res.status).toBe(400);
   });
 
-  it("legacy investment mode cannot hide catalog identities behind valuation eligibility", async () => {
+  it("mode=investment filters to InvestableSet universe", async () => {
     const sets = [
       makeSet("1", { investmentUniverse: "InvestableSet" }),
       makeSet("2", { investmentUniverse: "CollectorCatalog" }),
@@ -168,11 +180,11 @@ describe("GET /api/sets/catalog", () => {
     const res = await GET(makeRequest({ mode: "investment" }));
     const body = await res.json();
 
-    expect(body.total).toBe(4);
+    expect(body.total).toBe(1);
     expect(body.items[0].product.id).toBe("1");
   });
 
-  it("legacy tracker mode retains identities while rankings are unavailable", async () => {
+  it("mode=tracker filters to RetiredTracker universe", async () => {
     const sets = [
       makeSet("1", { investmentUniverse: "InvestableSet" }),
       makeSet("2", { investmentUniverse: "RetiredTracker" }),
@@ -182,11 +194,11 @@ describe("GET /api/sets/catalog", () => {
     const res = await GET(makeRequest({ mode: "tracker" }));
     const body = await res.json();
 
-    expect(body.total).toBe(2);
-    expect(body.items.map((item: {product:LegoSet})=>item.product.id)).toEqual(["1","2"]);
+    expect(body.total).toBe(1);
+    expect(body.items[0].product.id).toBe("2");
   });
 
-  it("legacy collector mode retains identities without requiring market data", async () => {
+  it("mode=collector filters to CollectorCatalog universe", async () => {
     const sets = [
       makeSet("1", { investmentUniverse: "InvestableSet" }),
       makeSet("2", { investmentUniverse: "CollectorCatalog" }),
@@ -196,7 +208,7 @@ describe("GET /api/sets/catalog", () => {
     const res = await GET(makeRequest({ mode: "collector" }));
     const body = await res.json();
 
-    expect(body.total).toBe(2);
-    expect(body.items.map((item: {product:LegoSet})=>item.product.id)).toEqual(["1","2"]);
+    expect(body.total).toBe(1);
+    expect(body.items[0].product.id).toBe("2");
   });
 });

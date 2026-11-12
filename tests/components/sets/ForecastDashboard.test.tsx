@@ -69,10 +69,7 @@ function makeItem(id: string): CatalogItem {
       moderate: { projectedValue: 33, dollarGain: 3, roiPercent: 10, annualRate: 2, signal: "Hold" },
       optimist: { projectedValue: 36, dollarGain: 6, roiPercent: 20, annualRate: 4, signal: "Buy" },
     },
-    id,
-    status: "ready",
-    statusMessage: null,
-    predictionSpreadPercent: 20,
+    updatedAt: "",
   };
   return { product, forecast };
 }

@@ -41,7 +41,7 @@ export function FirstVisitDisclaimer() {
           <strong className="font-semibold">
             BricksFuture is informational only and not financial advice.
           </strong>{" "}
-          Forecasts and sold-price rankings are suspended pending verified sales data
+          Forecasts are model estimates based on historical PriceCharting data
           and community signals. They are not guarantees. Verify all prices before
           buying or selling.{" "}
           <strong className="font-semibold">
