@@ -6,9 +6,9 @@
  *   pk=PRICING#PRODUCT#{setNumber}, sk=ebay-median
  *   { price, status, activeCount, p50, checkedAt, capturedAt, source: "ebay" }
  *
- * `price` is always the decided price (eBay median when the policy accepts
- * it, otherwise the last known price), so every surface that merges pricing
- * rows reads a number. The May 2026 PriceCharting rows stay as history.
+ * `price` is written only for a real accepted eBay observation, or preserved
+ * from a previously observed eBay price. Rejected checks without an eBay
+ * observation record metadata only; retained historical prices stay untouched.
  *
  * Work list: the 50 curated sets every day, plus a rotating slice of the
  * rest of the priced catalog (EBAY_ROTATION_LIMIT, default 600). The eBay
@@ -30,8 +30,8 @@ import {
   collectionLooksBroken,
   decideEbayPrice,
   formatSummary,
-  isSetListing,
-  summarizePrices,
+  summarizeListings,
+  buildPriceRow,
 } from "./lib/ebay-price-policy.mjs";
 
 const args = process.argv.slice(2);
@@ -106,10 +106,7 @@ async function searchSet(setNumber, lastKnown) {
       continue;
     }
     const data = await res.json();
-    const prices = (data.itemSummaries ?? [])
-      .filter((item) => isSetListing(item.title, setNumber))
-      .map((item) => Number(item.price?.value));
-    return summarizePrices(prices, lastKnown);
+    return summarizeListings(data.itemSummaries ?? [], setNumber, lastKnown);
   }
   throw new FatalEbayError(`eBay search for ${setNumber} kept failing`);
 }
@@ -188,19 +185,7 @@ async function main() {
   }
   if (DRY_RUN) return;
 
-  const rows = results.map((r) => ({
-    pk: `PRICING#PRODUCT#${r.setNumber}`,
-    sk: "ebay-median",
-    setNumber: r.setNumber,
-    source: "ebay",
-    price: r.price,
-    status: r.status,
-    activeCount: r.activeCount,
-    p50: r.p50 ?? undefined,
-    checkedAt: now,
-    // capturedAt = when the current price was last observed on eBay.
-    capturedAt: r.status === "accepted" ? now : ebayRows.get(r.setNumber)?.capturedAt,
-  }));
+  const rows = results.map((r) => buildPriceRow(r, ebayRows.get(r.setNumber), now));
   await writeRows(rows);
   console.log(`[ebay-prices] wrote ${rows.length} rows to ${TABLE}`);
 }

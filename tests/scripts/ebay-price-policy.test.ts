@@ -48,6 +48,9 @@ describe("isSetListing", () => {
       "LEGO 75222 Cloud City Sealed with SW0001 Exclusive",
       "LEGO 75192 NEW Sealed, No Box Damage",
       "LEGO 75192 New, Instructions included",
+      "LEGO 75192 New Sealed Never Opened",
+      "LEGO 75192 brand new never used",
+      "LEGO 75192 New not opened",
       "LEGO 75192 Sealed (Bag 1-60 inside)",
     ]) {
       const set = title.match(/\d{5}/)![0];
@@ -166,5 +169,34 @@ describe("formatSummary", () => {
     expect(md).toContain("| 21044 | thin | $49.00 | $110.00 | 3 |");
     expect(md).not.toContain("| 6000 |");
     expect(md).toContain("| 10270 ★ | $380.00 | $400.00 | 5.3% | 30 |");
+  });
+});
+
+describe("single-set identity regressions", () => {
+  it.each([
+    "LEGO 75192 75193 bundle new sealed",
+    "LEGO 75192 x2 sealed",
+    "LEGO 75192 2x new sealed",
+    "LEGO 75192 pack of 2",
+    "LEGO 75192 unopened box only",
+    "LEGO 75192 new sealed bags only",
+    "LEGO 75192 used complete",
+    "LEGO 75192 opened box never used",
+    "LEGO 75192 compatible with LEGO",
+    "LEGO A75192B",
+  ])("rejects %s", (title) => expect(isSetListing(title, "75192")).toBe(false));
+  it.each(["", "abc", "75192 OR 75193"])("rejects invalid set identifier %s", (set) => {
+    expect(isSetListing("LEGO 75192 new sealed", set)).toBe(false);
+  });
+});
+
+describe("invalid reference data", () => {
+  it("does not accept invalid sample counts or anchors", () => {
+    for (const count of [Number.NaN, Infinity, 8.5]) {
+      expect(decideEbayPrice({lastKnown: 100, aggregate: agg(count, 100)}).status).not.toBe("accepted");
+    }
+    for (const lastKnown of [Number.NaN, Infinity, 0, -100]) {
+      expect(decideEbayPrice({lastKnown, aggregate: agg(8, 100)}).status).not.toBe("accepted");
+    }
   });
 });
