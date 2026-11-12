@@ -17,10 +17,13 @@ export const MAX_RATIO = 2;
  */
 export function decideEbayPrice({ lastKnown, aggregate }) {
   const p50 = aggregate?.p50;
+  if (!Number.isFinite(lastKnown) || lastKnown <= 0) {
+    return { status: "no-data", price: lastKnown };
+  }
   if (!aggregate || typeof p50 !== "number" || !Number.isFinite(p50) || p50 <= 0) {
     return { status: "no-data", price: lastKnown };
   }
-  if (aggregate.activeCount < MIN_EBAY_LISTINGS) return { status: "thin", price: lastKnown };
+  if (!Number.isSafeInteger(aggregate.activeCount) || aggregate.activeCount < MIN_EBAY_LISTINGS) return { status: "thin", price: lastKnown };
   const ratio = p50 / lastKnown;
   if (ratio < MIN_RATIO || ratio > MAX_RATIO) return { status: "out-of-band", price: lastKnown };
   return { status: "accepted", price: Math.round(p50 * 100) / 100 };
@@ -30,6 +33,11 @@ export function decideEbayPrice({ lastKnown, aggregate }) {
 // several copies, or knock-offs. `unless` lets a sealed set that merely
 // mentions its contents through ("Sealed, 25 Minifigures", "No Box Damage").
 const NOT_A_SET = [
+  { pattern: /\bbundle\b/i },
+  { pattern: /\b(?:x\s*[2-9]\d*|[2-9]\d*\s*x)\b/i },
+  { pattern: /\b(?:pack|set) of [2-9]\d*\b/i },
+  { pattern: /\b(?:bags?|bricks?) only\b/i },
+  { pattern: /\b(?:used|pre[ -]?owned|opened|unsealed|no minifig(?:ure)?s?)\b/i },
   { pattern: /\bminifig(ure)?s?\b/i, unless: /\b\d{1,3}\s+minifig/i },
   // minifigure catalogue codes (sh833, sw0001, hp150, col123, njo456, ...)
   { pattern: /\b(sh|sw|hp|col|njo|cty|idea|tlm|lor|poc|dim)\d{3,4}[a-z]?\b/i, unless: /\bsealed\b/i },
@@ -59,10 +67,13 @@ const NOT_A_SET = [
 
 /** True when an eBay title is the complete set with this exact set number. */
 export function isSetListing(title, setNumber) {
-  if (typeof title !== "string" || !setNumber) return false;
-  const exact = new RegExp(`(^|[^0-9])${String(setNumber).replace(/[^0-9a-z]/gi, "")}([^0-9]|$)`, "i");
+  if (typeof title !== "string" || !/^\d{1,7}(?:-\d{1,2})?$/.test(String(setNumber))) return false;
+  const number = String(setNumber).split("-")[0];
+  const exact = new RegExp(`(^|[^a-z0-9])${number}([^a-z0-9]|$)`, "i");
   if (!exact.test(title)) return false;
-  return !NOT_A_SET.some(({ pattern, unless }) => pattern.test(title) && !(unless && unless.test(title)));
+  // Negative condition phrases describe an unused/unopened set, not a defect.
+  const description = title.replace(/\b(?:never|not)(?:\s+been)?\s+(?:opened|used)\b/gi, "");
+  return !NOT_A_SET.some(({ pattern, unless }) => pattern.test(description) && !(unless && unless.test(description)));
 }
 
 export const MIN_PRICE_FACTOR = 0.25;
@@ -86,6 +97,51 @@ export function summarizePrices(prices, lastKnown) {
   return { activeCount: usable.length, p50 };
 }
 
+
+/** Aggregate only distinct, priced USD/new/fixed-price listings for this set.
+ * The API filter is a request, not a guarantee about every returned row.
+ */
+export function summarizeListings(items, setNumber, lastKnown) {
+  const seen = new Set();
+  const prices = [];
+  for (const item of items) {
+    if (!item || typeof item.itemId !== "string" || !item.itemId.trim()) continue;
+    if (!isSetListing(item.title, setNumber) || item.price?.currency !== "USD") continue;
+    if (String(item.conditionId) !== "1000" || !Array.isArray(item.buyingOptions) || !item.buyingOptions.includes("FIXED_PRICE")) continue;
+    const raw = item.price?.value;
+    if ((typeof raw !== "string" && typeof raw !== "number") || String(raw).trim() === "") continue;
+    const price = Number(raw);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    // Variations share a parent item; count that item once, not every SKU.
+    const id = item.itemId.match(/^v1\|(\d+)\|/)?.[1] ?? item.itemId.trim();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    prices.push(price);
+  }
+  return summarizePrices(prices, lastKnown);
+}
+
+/** Preserve check metadata without inventing an eBay observation on fallback. */
+export function buildPriceRow(result, previousRow, checkedAt) {
+  const row = {
+    pk: `PRICING#PRODUCT#${result.setNumber}`,
+    sk: "ebay-median",
+    setNumber: result.setNumber,
+    status: result.status,
+    activeCount: result.activeCount,
+    p50: result.p50 ?? undefined,
+    checkedAt,
+  };
+  const accepted = result.status === "accepted" && Number.isFinite(result.price) && result.price > 0;
+  const retained = Number.isFinite(previousRow?.price) && previousRow.price > 0 &&
+    typeof previousRow.capturedAt === "string" && Number.isFinite(Date.parse(previousRow.capturedAt));
+  if (accepted || retained) {
+    return { ...row, source: "ebay", price: accepted ? result.price : previousRow.price,
+      capturedAt: accepted ? checkedAt : previousRow.capturedAt };
+  }
+  return row;
+}
+
 /**
  * Daily work list: every curated set, then a rotating slice of the rest of
  * the priced catalog (never-checked first, then oldest check first).
@@ -98,13 +154,13 @@ export function buildWorkList({ curated, catalog, pcNewPriceCents, ebayRows, rot
   for (const row of catalog) {
     if (!row.setNumber) continue;
     const cents = pcNewPriceCents.get(row.id);
-    if (typeof cents === "number" && cents > 0 && !pcBySet.has(String(row.setNumber))) {
+    if (Number.isFinite(cents) && cents > 0 && !pcBySet.has(String(row.setNumber))) {
       pcBySet.set(String(row.setNumber), cents / 100);
     }
   }
   const lastKnownFor = (setNumber, fallback) => {
     const ebay = ebayRows.get(setNumber)?.price;
-    if (typeof ebay === "number" && ebay > 0) return ebay;
+    if (Number.isFinite(ebay) && ebay > 0) return ebay;
     return pcBySet.get(setNumber) ?? fallback;
   };
 
@@ -112,7 +168,7 @@ export function buildWorkList({ curated, catalog, pcNewPriceCents, ebayRows, rot
   const seen = new Set();
   for (const set of curated) {
     const lastKnown = lastKnownFor(set.setNumber, set.currentPrice);
-    if (!(lastKnown > 0) || seen.has(set.setNumber)) continue;
+    if (!Number.isFinite(lastKnown) || !(lastKnown > 0) || seen.has(set.setNumber)) continue;
     seen.add(set.setNumber);
     items.push({ setNumber: set.setNumber, lastKnown, curated: true });
   }
