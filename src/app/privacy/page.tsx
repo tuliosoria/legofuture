@@ -98,7 +98,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Hosting and CDN:</strong> processes requests and logs as described above.</li>
             <li><strong>PriceCharting, BrickLink, Rebrickable, Brick Insights, Google Trends, Reddit:</strong> read-only public-data sources we fetch from to build forecasts and signals. They do not receive any personal data about you from us.</li>
-            <li><strong>eBay:</strong> outbound eBay links are plain links with no affiliate or commission tracking attached.</li>
+            <li><strong>eBay:</strong> we read public eBay prices to set each set&rsquo;s current price; outbound eBay links are plain links with no affiliate or commission tracking attached.</li>
           </ul>
         </Section>
 

@@ -20,10 +20,25 @@ npm run verify    # lint + test + build
 See [AGENTS.md](./AGENTS.md) for AI agent guidance, including the
 superpowers and Vercel React best-practices skills this repo uses.
 
+## Prices (since November 2026)
+
+Current prices come from eBay. `scripts/refresh-ebay-prices.mjs` runs daily
+at 07:00 UTC (`.github/workflows/refresh-ebay-prices.yml`): it checks the 50
+curated sets plus a rotating slice of the catalog and writes
+`PRICING#PRODUCT#{setNumber}` / `ebay-median` rows. The eBay median is used
+only with 8+ listings and within 0.5x–2x of the last known price; otherwise
+the set keeps its last price. The PriceCharting subscription is cancelled —
+its May 2026 prices and history stay in DynamoDB as history, and its sync
+scripts are disabled.
+
+```sh
+npm run refresh:ebay-prices -- --dry-run --rotation=20
+```
+
 ## Data sync
 
-BricksFuture aggregates pricing from PriceCharting (PC), BrickLink (BL),
-Brickset (BS), and eBay sold listings. Each source has its own script in
+BricksFuture aggregates pricing from eBay (current), PriceCharting (PC,
+history only), BrickLink (BL) and Brickset (BS). Each source has its own script in
 `scripts/`. All scripts are **idempotent and resumable** via a
 `META#{SOURCE}_PROGRESS` checkpoint in DynamoDB.
 

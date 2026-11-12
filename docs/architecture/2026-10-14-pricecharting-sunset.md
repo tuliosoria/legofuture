@@ -1,5 +1,7 @@
 # ADR — Sunset PriceCharting: BricksFuture
 
+> **Superado em 12/11/2026.** O dono decidiu trocar a fonte de preço para o eBay e reativar forecasts e buying lists. Ver `docs/superpowers/specs/2026-11-12-ebay-price-source-design.md`.
+
 Status: comportamento aprovado; implementação pendente de revisão do plano. Base auditada: `e3486b45`.
 
 ## Decisão aprovada e alcance

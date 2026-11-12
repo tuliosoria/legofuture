@@ -1,5 +1,7 @@
 # Sunset rollout and recovery — BricksFuture
 
+> **Superado em 12/11/2026.** O dono decidiu trocar a fonte de preço para o eBay e reativar forecasts e buying lists. Ver `docs/superpowers/specs/2026-11-12-ebay-price-source-design.md`.
+
 This branch is a release candidate. On 15 October 2026 the user authorized publication preparation, a feature-branch push and PR after checks. Merge and rollout remain coordinated by the root operator; this preparer has performed no deploy, live ingestion, schedule dispatch, retraining or credential/IAM change.
 
 ## Current behavior

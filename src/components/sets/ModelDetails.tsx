@@ -41,7 +41,7 @@ function formatDate(iso: string): string {
 export function ModelDetails({
   confidence,
   updatedAt,
-  sources = "PriceCharting + Community",
+  sources = "eBay + PriceCharting history + Community",
 }: ModelDetailsProps) {
   const copy = COPY[confidence];
   return (

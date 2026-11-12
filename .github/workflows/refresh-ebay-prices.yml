@@ -1,0 +1,66 @@
+name: eBay — daily price refresh
+
+# Current LEGO set prices come from eBay since November 2026 (PriceCharting is
+# cancelled). The script writes PRICING#PRODUCT#{setNumber} sk=ebay-median rows
+# to DynamoDB; the site reads them at runtime (ISR 1h), so no deploy is needed.
+#
+# A failed run writes nothing (the script aborts before any write when an eBay
+# request fails or no price is accepted) and turns this workflow red — that is
+# the alert. Runs one hour after PokeFuture's refresh, which shares the keyset.
+#
+# Spec: docs/superpowers/specs/2026-11-12-ebay-price-source-design.md
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      rotation:
+        description: "Catalog sets to check besides the 50 curated ones"
+        required: false
+        default: "600"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: refresh-ebay-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Policy tests
+        run: npx vitest run tests/scripts/ebay-price-policy.test.ts
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PRICES_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Refresh prices
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          DYNAMODB_TABLE: legofuture-cache
+          EBAY_ROTATION_LIMIT: ${{ github.event.inputs.rotation || '600' }}
+        run: |
+          if [ -z "$EBAY_CLIENT_ID" ] || [ -z "$EBAY_CLIENT_SECRET" ]; then
+            echo "::error::EBAY_CLIENT_ID / EBAY_CLIENT_SECRET repo secrets are not set."
+            exit 1
+          fi
+          npm run refresh:ebay-prices -- --summary-out=/tmp/ebay-summary.md
+          cat /tmp/ebay-summary.md >> "$GITHUB_STEP_SUMMARY"

@@ -21,8 +21,8 @@ export default function MethodologyPage() {
         <p>
           BricksFuture publishes a 5-year price forecast for every set in our catalog. Forecasts are
           produced by an open-source machine-learning model (gradient-boosted trees, XGBoost) trained
-          on three families of inputs: <strong>price history</strong> (monthly sealed comps from
-          PriceCharting plus recent eBay and BrickLink sold transactions),{" "}
+          on three families of inputs: <strong>price history</strong> (PriceCharting sealed price
+          history plus daily eBay prices for new, sealed sets),{" "}
           <strong>set fundamentals</strong> (theme, piece count, release year, MSRP, retirement
           status), and <strong>community engagement</strong> (Brick Insights ratings, Google Trends
           search interest, and Reddit mention volume). Every set ships with a base-case projection
@@ -37,9 +37,9 @@ export default function MethodologyPage() {
           Raw data sources
         </h3>
         <ul className="list-disc pl-6 space-y-1">
-          <li><strong>PriceCharting:</strong> monthly sealed price snapshots, typically 12 to 36 months of history per set.</li>
+          <li><strong>eBay:</strong> current prices for new, sealed sets, refreshed daily.</li>
+          <li><strong>PriceCharting:</strong> monthly sealed price history, typically 12 to 36 months per set.</li>
           <li><strong>BrickLink sold comps:</strong> recent secondary-market transaction prices.</li>
-          <li><strong>eBay completed listings:</strong> actual sale prices (not asks) for sealed sets.</li>
           <li><strong>Rebrickable + LEGO catalog:</strong> set metadata (theme, piece count, release year, MSRP).</li>
           <li><strong>Retirement status:</strong> active, retiring-soon, or retired, sourced from LEGO.com and curated trackers.</li>
           <li><strong>Brick Insights, Google Trends, Reddit:</strong> community engagement signals.</li>

@@ -30,7 +30,7 @@ run_if rebrickable scripts/sync-rebrickable-catalog.mjs REBRICKABLE_API_KEY
 # Enrichment + pricing in parallel.
 run_if brickset scripts/sync-brickset-enrichment.mjs BRICKSET_API_KEY BRICKSET_USERNAME BRICKSET_PASSWORD &
 run_if bricklink scripts/sync-bricklink-pricing.mjs BRICKLINK_CONSUMER_KEY BRICKLINK_CONSUMER_SECRET BRICKLINK_TOKEN_VALUE BRICKLINK_TOKEN_SECRET &
-run_if ebay scripts/sync-ebay-sold-listings.mjs EBAY_CLIENT_ID EBAY_CLIENT_SECRET &
+run_if ebay scripts/refresh-ebay-prices.mjs EBAY_CLIENT_ID EBAY_CLIENT_SECRET &
 run_if trends scripts/sync-google-trends.mjs &
 run_if community scripts/sync-community.mjs &
 wait

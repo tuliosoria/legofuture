@@ -1,5 +1,7 @@
 # BricksFuture — PriceCharting Sunset Implementation Plan
 
+> **Superado em 12/11/2026.** O dono decidiu trocar a fonte de preço para o eBay e reativar forecasts e buying lists. Ver `docs/superpowers/specs/2026-11-12-ebay-price-source-design.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Um escritor por repo; execução ainda não autorizada.
 
 **Goal:** Operar sem chamadas PC/SportsCardsPro e sem transformar anúncios em valuation.

@@ -58,10 +58,26 @@ Invoke `vercel-react-best-practices` whenever you:
 - **Verify before claiming complete**: run the relevant build / test /
   lint command and confirm exit 0 before reporting success.
 
-## Sunset PriceCharting — decisão de 14/10/2026
+## Fonte de preço: eBay — decisão do dono em 12/11/2026
 
-- Data informada: 22/10/2026; horário contratual desconhecido. Preparação proposta até 20/10/2026 00:00 UTC.
-- Manter catálogo, busca, anúncios e calculadoras manuais existentes. Anúncio ativo eBay não é venda nem valor de mercado. Suspender forecasts/rankings dependentes de vendas sem fonte válida; mostrar origem, data, condição e amostra.
-- Não renovar data observada ao ler cache; não substituir ausência por zero. Não presumir Marketplace Insights, quota efetiva ou licença de retenção PC.
-- Não apagar dados, imagens, históricos ou modelos; inventário/licença/deleção têm gates separados. Não alterar credenciais, assinatura ou produção. Push/deploy exigem autorização específica.
-- Contexto permanente: [ADR do sunset](docs/architecture/2026-10-14-pricecharting-sunset.md); [plano por tarefas](docs/superpowers/plans/2026-10-14-pricecharting-sunset.md). Comportamento aprovado não autoriza execução do plano.
+A assinatura PriceCharting foi cancelada. Desde novembro de 2026 o preço atual
+vem do eBay, com as mesmas decisões tomadas para o PokeFuture em 10/11/2026:
+
+- Troca silenciosa: sem banner, sem rótulo "asking price". Preço é preço.
+- Regra: mediana eBay só com >= 8 anúncios e dentro de 0,5x–2x do último preço
+  conhecido; senão mantém o último preço. Nunca gravar 0/NaN/null.
+- Os dados antigos do PriceCharting (linhas `PRICING#PRODUCT#{pcId}` sk=`v1`,
+  maio/2026, e o histórico) ficam no DynamoDB e no site. Não apagar.
+- Não reativar PriceCharting: os scripts `sync-pricecharting-*`,
+  `scrape-pricecharting-history` e derivados continuam desligados.
+- `scripts/refresh-ebay-prices.mjs` grava `PRICING#PRODUCT#{setNumber}`
+  sk=`ebay-median`; `mergePricingRows` dá precedência a essa linha. Roda todo dia
+  às 07:00 UTC pelo workflow `.github/workflows/refresh-ebay-prices.yml` (50 sets
+  curados + rodízio de 600 do catálogo). A chave eBay é compartilhada com o
+  PokeFuture (~5.000 chamadas/dia): não aumentar o rodízio sem somar os dois.
+- Buying lists e home ordenam por score ajustado ao preço atual
+  (`src/lib/domain/price-adjusted-score.ts`).
+- Spec: [docs/superpowers/specs/2026-11-12-ebay-price-source-design.md](docs/superpowers/specs/2026-11-12-ebay-price-source-design.md).
+  O ADR do sunset de outubro está superado.
+- O branch `main` não tem auto-build no Amplify (app `d2lnw5t0h096c1`): depois do
+  push, disparar `aws amplify start-job --app-id d2lnw5t0h096c1 --branch-name main --job-type RELEASE`.
