@@ -198,6 +198,19 @@ describe("toMvpLegoSet", () => {
     expect(out.confLabel).toBe(curated.confLabel);
   });
 
+  it("re-scores the set against today's price", async () => {
+    const { toMvpLegoSet } = await importLiveCatalog();
+    const expensive = toMvpLegoSet({
+      curated,
+      ddbProduct: null,
+      pricing: pricing({ newPrice: curated.currentPrice * 1.5 }),
+      history: [],
+      mlForecast: null,
+    });
+    expect(expensive.currentPrice).toBe(Math.round(curated.currentPrice * 1.5));
+    expect(expensive.score).toBeLessThan(curated.score);
+  });
+
   it("preserves thesis from curated always", async () => {
     const { toMvpLegoSet } = await importLiveCatalog();
 

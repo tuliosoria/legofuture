@@ -6,6 +6,7 @@ import { loadHistory } from "@/lib/db/lego-history";
 import { loadStoredCatalog } from "@/lib/db/lego-search";
 import { getPricingFromDdb } from "@/lib/domain/lego-estimate";
 import { computeMlForecast } from "@/lib/domain/lego-forecast";
+import { adjustForCurrentPrice } from "@/lib/domain/price-adjusted-score";
 import type { LegoSet as MvpLegoSet } from "@/lib/domain/lego-set";
 import type {
   Forecast,
@@ -143,6 +144,8 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
   // upstream signals are missing — in that case curated wins.
   const communityScore =
     input.communityScore != null ? input.communityScore : curated.communityScore;
+  // Forecasts and rankings follow today's price, not the curated one.
+  const { score, signal } = adjustForCurrentPrice(curated, { currentPrice, proj5y });
 
   return {
     ...curated,
@@ -153,6 +156,8 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
     status: statusFromProduct(ddbProduct, curated.status),
     msrp: ddbProduct?.originalMsrp ? Math.round(ddbProduct.originalMsrp) : curated.msrp,
     currentPrice,
+    score,
+    signal,
     proj5y: Math.round(proj5y),
     bear: Math.round(bear),
     bull: Math.round(bull),
