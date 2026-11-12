@@ -29,6 +29,7 @@ import {
   buildWorkList,
   collectionLooksBroken,
   decideEbayPrice,
+  formatSummary,
   isSetListing,
   summarizePrices,
 } from "./lib/ebay-price-policy.mjs";
@@ -90,7 +91,14 @@ async function searchSet(setNumber, lastKnown) {
       await sleep(2_000 * (attempt + 1));
       continue;
     }
-    if (res.status === 429) throw new FatalEbayError("eBay quota exhausted (429)");
+    if (res.status === 429) {
+      // One polite retry after Retry-After (capped at 60s); a second 429
+      // means the shared daily quota is gone: stop before writing anything.
+      if (attempt > 0) throw new FatalEbayError("eBay quota exhausted (429)");
+      const retryAfter = Number(res.headers.get("retry-after"));
+      await sleep(Math.min(60_000, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 30_000));
+      continue;
+    }
     if (res.status === 401 && attempt === 0) continue;
     if (res.status === 401 || res.status === 403) throw new FatalEbayError(`eBay auth HTTP ${res.status}`);
     if (!res.ok) {
@@ -154,37 +162,6 @@ async function writeRows(items) {
       if (requests.length) await sleep(500 * (attempt + 1));
     }
   }
-}
-
-function formatSummary(results, { dryRun }) {
-  const count = (status) => results.filter((r) => r.status === status).length;
-  const movers = results
-    .filter((r) => r.status === "accepted" && r.lastKnown > 0)
-    .map((r) => ({ ...r, change: r.price / r.lastKnown - 1 }))
-    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-    .slice(0, 15);
-  const lines = [
-    `## eBay price refresh${dryRun ? " (dry run)" : ""}`,
-    "",
-    `Checked ${results.length} sets (${results.filter((r) => r.curated).length} curated).`,
-    "",
-    `| status | sets |`,
-    `|---|---|`,
-    `| accepted (eBay median) | ${count("accepted")} |`,
-    `| thin (< 8 listings, kept last price) | ${count("thin")} |`,
-    `| out-of-band (kept last price) | ${count("out-of-band")} |`,
-    `| no data (kept last price) | ${count("no-data")} |`,
-    "",
-    "### Largest accepted moves",
-    "",
-    "| set | before | now | change | listings |",
-    "|---|---|---|---|---|",
-    ...movers.map(
-      (r) =>
-        `| ${r.setNumber}${r.curated ? " ★" : ""} | $${r.lastKnown.toFixed(2)} | $${r.price.toFixed(2)} | ${(r.change * 100).toFixed(1)}% | ${r.activeCount} |`
-    ),
-  ];
-  return lines.join("\n") + "\n";
 }
 
 async function main() {

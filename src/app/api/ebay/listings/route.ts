@@ -97,7 +97,11 @@ export async function POST(req: NextRequest) {
     const listings = await fetchEbayListings({ keywords, customId });
     return NextResponse.json({ success: true, data: { listings } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    // eBay error bodies stay in the server log, never in the response.
+    console.warn("[ebay-listings]", err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { success: false, error: "eBay listings are unavailable right now." },
+      { status: 502 },
+    );
   }
 }

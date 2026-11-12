@@ -27,33 +27,34 @@ export function decideEbayPrice({ lastKnown, aggregate }) {
 }
 
 // Titles that are not the complete, new set: parts of it, add-ons for it,
-// several copies, or knock-offs.
+// several copies, or knock-offs. `unless` lets a sealed set that merely
+// mentions its contents through ("Sealed, 25 Minifigures", "No Box Damage").
 const NOT_A_SET = [
-  /\bminifig(ure)?s?\b/i,
+  { pattern: /\bminifig(ure)?s?\b/i, unless: /\b\d{1,3}\s+minifig/i },
   // minifigure catalogue codes (sh833, sw0001, hp150, col123, njo456, ...)
-  /\b(sh|sw|hp|col|njo|cty|idea|tlm|lor|poc|dim)\d{3,4}[a-z]?\b/i,
-  /\binstructions?\b/i,
-  /\bmanuals?\b/i,
-  /\bbox only\b/i,
-  /\bempty box\b/i,
-  /\bno box\b/i,
-  /\bbags? \d+\b/i,
-  /\bbag only\b/i,
-  /\blot\b/i,
-  /\bcustom\b/i,
-  /\bmoc\b/i,
-  /\bcompatible\b/i,
-  /\bgeneric\b/i,
-  /\breplica\b/i,
-  /\bknock-?off\b/i,
-  /\bled\b/i,
-  /\blight(ing)? kit\b/i,
-  /\bdisplay (case|stand)\b/i,
-  /\bacrylic\b/i,
-  /\bstickers?\b/i,
-  /\breplacement\b/i,
-  /\bincomplete\b/i,
-  /\bparts? only\b/i,
+  { pattern: /\b(sh|sw|hp|col|njo|cty|idea|tlm|lor|poc|dim)\d{3,4}[a-z]?\b/i, unless: /\bsealed\b/i },
+  { pattern: /\binstructions?\b(?!\s+(included|inside))/i },
+  { pattern: /\bmanuals?\b(?!\s+(included|inside))/i },
+  { pattern: /\bbox only\b/i },
+  { pattern: /\bempty box\b/i },
+  { pattern: /\bno box\b(?!\s+(damage|dents?|wear|creases?))/i },
+  { pattern: /\bbags? \d+(\s*(-|to)\s*\d+)?\s+only\b/i },
+  { pattern: /\bbag only\b/i },
+  { pattern: /\blot\b/i },
+  { pattern: /\bcustom\b/i },
+  { pattern: /\bmoc\b/i },
+  { pattern: /\bcompatible\b/i },
+  { pattern: /\bgeneric\b/i },
+  { pattern: /\breplica\b/i },
+  { pattern: /\bknock-?off\b/i },
+  { pattern: /\bled\b/i },
+  { pattern: /\blight(ing)? kit\b/i },
+  { pattern: /\bdisplay (case|stand)\b/i },
+  { pattern: /\bacrylic\b/i },
+  { pattern: /\bstickers?\b/i },
+  { pattern: /\breplacement\b/i },
+  { pattern: /\bincomplete\b/i },
+  { pattern: /\bparts? only\b/i },
 ];
 
 /** True when an eBay title is the complete set with this exact set number. */
@@ -61,7 +62,7 @@ export function isSetListing(title, setNumber) {
   if (typeof title !== "string" || !setNumber) return false;
   const exact = new RegExp(`(^|[^0-9])${String(setNumber).replace(/[^0-9a-z]/gi, "")}([^0-9]|$)`, "i");
   if (!exact.test(title)) return false;
-  return !NOT_A_SET.some((pattern) => pattern.test(title));
+  return !NOT_A_SET.some(({ pattern, unless }) => pattern.test(title) && !(unless && unless.test(title)));
 }
 
 export const MIN_PRICE_FACTOR = 0.25;
@@ -130,4 +131,50 @@ export function buildWorkList({ curated, catalog, pcNewPriceCents, ebayRows, rot
 /** A run that accepted nothing is a broken collection, not a quiet market. */
 export function collectionLooksBroken(results) {
   return !results.some((r) => r.status === "accepted");
+}
+
+/** Markdown run report (stdout, workflow step summary). */
+export function formatSummary(results, { dryRun }) {
+  const count = (status) => results.filter((r) => r.status === status).length;
+  const movers = results
+    .filter((r) => r.status === "accepted" && r.lastKnown > 0)
+    .map((r) => ({ ...r, change: r.price / r.lastKnown - 1 }))
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+    .slice(0, 15);
+  const lines = [
+    `## eBay price refresh${dryRun ? " (dry run)" : ""}`,
+    "",
+    `Checked ${results.length} sets (${results.filter((r) => r.curated).length} curated).`,
+    "",
+    `| status | sets |`,
+    `|---|---|`,
+    `| accepted (eBay median) | ${count("accepted")} |`,
+    `| thin (< 8 listings, kept last price) | ${count("thin")} |`,
+    `| out-of-band (kept last price) | ${count("out-of-band")} |`,
+    `| no data (kept last price) | ${count("no-data")} |`,
+    "",
+    "### Largest accepted moves",
+    "",
+    "| set | before | now | change | listings |",
+    "|---|---|---|---|---|",
+    ...movers.map(
+      (r) =>
+        `| ${r.setNumber}${r.curated ? " ★" : ""} | $${r.lastKnown.toFixed(2)} | $${r.price.toFixed(2)} | ${(r.change * 100).toFixed(1)}% | ${r.activeCount} |`
+    ),
+  ];
+  const stuck = results.filter((r) => r.curated && r.status !== "accepted");
+  if (stuck.length) {
+    lines.push(
+      "",
+      "### Curated sets that kept their last price",
+      "",
+      "| set | status | kept | eBay median | listings |",
+      "|---|---|---|---|---|",
+      ...stuck.map(
+        (r) =>
+          `| ${r.setNumber} | ${r.status} | $${r.lastKnown.toFixed(2)} | ${typeof r.p50 === "number" ? `$${r.p50.toFixed(2)}` : "—"} | ${r.activeCount} |`
+      )
+    );
+  }
+  return lines.join("\n") + "\n";
 }

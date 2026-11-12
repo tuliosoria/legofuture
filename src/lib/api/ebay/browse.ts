@@ -25,6 +25,7 @@ export async function searchEbayByKeywords(
       "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
       Accept: "application/json",
     },
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {
@@ -74,6 +75,7 @@ export async function searchEbayByKeywordsAll(
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
         Accept: "application/json",
       },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");

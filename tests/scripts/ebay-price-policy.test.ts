@@ -5,6 +5,7 @@ import {
   MIN_RATIO,
   buildWorkList,
   collectionLooksBroken,
+  formatSummary,
   decideEbayPrice,
   isSetListing,
   summarizePrices,
@@ -38,6 +39,20 @@ describe("isSetListing", () => {
     expect(isSetListing("LEGO 75192-1 Millennium Falcon", "75192")).toBe(true);
     expect(isSetListing("LEGO 751920 something", "75192")).toBe(false);
     expect(isSetListing("LEGO Millennium Falcon UCS", "75192")).toBe(false);
+  });
+
+  it("keeps sealed sets whose titles mention their minifigures, instructions or box condition", () => {
+    for (const title of [
+      "LEGO 76178 Daily Bugle New Sealed 25 Minifigures",
+      "LEGO 76269 Avengers Tower NEW SEALED 31 minifigs",
+      "LEGO 75222 Cloud City Sealed with SW0001 Exclusive",
+      "LEGO 75192 NEW Sealed, No Box Damage",
+      "LEGO 75192 New, Instructions included",
+      "LEGO 75192 Sealed (Bag 1-60 inside)",
+    ]) {
+      const set = title.match(/\d{5}/)![0];
+      expect(isSetListing(title, set), title).toBe(true);
+    }
   });
 
   it("rejects minifigures, manuals, boxes, lots, custom and add-on products", () => {
@@ -132,5 +147,24 @@ describe("collectionLooksBroken", () => {
     expect(collectionLooksBroken([{ status: "no-data" }, { status: "thin" }])).toBe(true);
     expect(collectionLooksBroken([])).toBe(true);
     expect(collectionLooksBroken([{ status: "thin" }, { status: "accepted" }])).toBe(false);
+  });
+});
+
+describe("formatSummary", () => {
+  it("lists curated sets that kept their old price, so stuck anchors are visible", () => {
+    const md = formatSummary(
+      [
+        { setNumber: "10270", curated: true, status: "accepted", lastKnown: 380, price: 400, activeCount: 30, p50: 400 },
+        { setNumber: "10220", curated: true, status: "out-of-band", lastKnown: 173, price: 173, activeCount: 40, p50: 520 },
+        { setNumber: "21044", curated: true, status: "thin", lastKnown: 49, price: 49, activeCount: 3, p50: 110 },
+        { setNumber: "6000", curated: false, status: "out-of-band", lastKnown: 10, price: 10, activeCount: 9, p50: 50 },
+      ],
+      { dryRun: false }
+    );
+    expect(md).toContain("### Curated sets that kept their last price");
+    expect(md).toContain("| 10220 | out-of-band | $173.00 | $520.00 | 40 |");
+    expect(md).toContain("| 21044 | thin | $49.00 | $110.00 | 3 |");
+    expect(md).not.toContain("| 6000 |");
+    expect(md).toContain("| 10270 ★ | $380.00 | $400.00 | 5.3% | 30 |");
   });
 });

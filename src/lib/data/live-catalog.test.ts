@@ -211,6 +211,25 @@ describe("toMvpLegoSet", () => {
     expect(expensive.score).toBeLessThan(curated.score);
   });
 
+  it("re-scores on price only, not on the ML projection", async () => {
+    const { toMvpLegoSet } = await importLiveCatalog();
+    const out = toMvpLegoSet({
+      curated,
+      ddbProduct: null,
+      pricing: pricing({ newPrice: curated.currentPrice }),
+      history: [],
+      mlForecast: {
+        scenarios: {
+          moderate: { projectedValue: curated.proj5y * 3 },
+          pessimist: { projectedValue: curated.bear },
+          optimist: { projectedValue: curated.bull },
+        },
+      } as unknown as Forecast,
+    });
+    expect(out.proj5y).toBe(Math.round(curated.proj5y * 3));
+    expect(out.score).toBe(curated.score);
+  });
+
   it("preserves thesis from curated always", async () => {
     const { toMvpLegoSet } = await importLiveCatalog();
 

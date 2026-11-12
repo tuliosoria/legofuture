@@ -34,6 +34,7 @@ export async function getEbayAccessToken(): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body,
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {

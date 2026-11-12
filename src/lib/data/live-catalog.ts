@@ -145,7 +145,7 @@ export function toMvpLegoSet(input: AdaptInput): MvpLegoSet {
   const communityScore =
     input.communityScore != null ? input.communityScore : curated.communityScore;
   // Forecasts and rankings follow today's price, not the curated one.
-  const { score, signal } = adjustForCurrentPrice(curated, { currentPrice, proj5y });
+  const { score, signal } = adjustForCurrentPrice(curated, currentPrice);
 
   return {
     ...curated,
