@@ -11,6 +11,7 @@ import {
 import { SlidersHorizontal } from "lucide-react";
 import type { Forecast, LegoTheme } from "@/lib/types/lego";
 import { LEGO_THEMES } from "@/lib/data/lego-themes";
+import { CatalogPriceCard } from "@/components/sets/CatalogPriceCard";
 import { ProductForecastCard } from "./ProductForecastCard";
 import { SkeletonForecastCard } from "./SkeletonForecastCard";
 import { TopBuyOpportunities } from "./TopBuyOpportunities";
@@ -27,12 +28,14 @@ import {
 } from "@/lib/domain/lego-filter";
 
 const MODE_TABS: { value: PageMode; label: string }[] = [
+  { value: "All sets", label: "All sets" },
   { value: "Investment Screener", label: "Investment Screener" },
   { value: "Retired Set Tracker", label: "Retired Tracker" },
   { value: "Collector Catalog", label: "Collector Catalog" },
 ];
 
 const MODE_TO_API: Record<PageMode, string> = {
+  "All sets": "all",
   "Investment Screener": "investment",
   "Retired Set Tracker": "tracker",
   "Collector Catalog": "collector",
@@ -57,6 +60,8 @@ interface ForecastDashboardProps {
   /** Number of sets in the catalog that have at least one pricing provider. */
   initialWithPricing?: number;
   includeOrphans?: boolean;
+  /** Fetch page one when the page intentionally omits an SSR catalog scan. */
+  loadOnMount?: boolean;
   /** @internal Test helper: shows Load-more button regardless of sentinel */
   _testForceLoadMore?: boolean;
 }
@@ -66,7 +71,7 @@ function buildCatalogUrl(page: number, state: FilterState, includeOrphans: boole
   const sp = new URLSearchParams();
   sp.set("page", String(page));
   sp.set("limit", String(PAGE_LIMIT));
-  sp.set("mode", MODE_TO_API[state.pageMode ?? "Investment Screener"]);
+  sp.set("mode", MODE_TO_API[state.pageMode ?? "All sets"]);
   if (state.query) sp.set("q", state.query);
   if (state.themes.length === 1) sp.set("theme", state.themes[0]);
   if (state.status !== "all") sp.set("status", state.status);
@@ -79,6 +84,7 @@ export function ForecastDashboard({
   initialTotal,
   initialWithPricing,
   includeOrphans = true,
+  loadOnMount = false,
   _testForceLoadMore = false,
 }: ForecastDashboardProps) {
   const [state, setState] = useState<FilterState>(DEFAULT_FILTER_STATE);
@@ -92,7 +98,10 @@ export function ForecastDashboard({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialItems.length < initialTotal);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const requestSequence = useRef(0);
   const loadedForState = useRef<FilterState>(DEFAULT_FILTER_STATE);
+  const initialRequestStarted = useRef(false);
 
   // sentinel ref for IntersectionObserver infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -100,12 +109,15 @@ export function ForecastDashboard({
   /** Fetch a page from the API; append=true appends, false replaces */
   const fetchPage = useCallback(
     async (targetPage: number, filterState: FilterState, append: boolean) => {
+      const request = ++requestSequence.current;
       setIsLoadingMore(true);
+      setFetchError(false);
       try {
         const url = buildCatalogUrl(targetPage, filterState, includeOrphans);
         const res = await fetch(url);
-        if (!res.ok) return;
+        if (!res.ok) throw new Error("Catalog request failed");
         const data: CatalogApiResponse = await res.json();
+        if (request !== requestSequence.current) return;
         if (append) {
           setItems((prev) => [...prev, ...data.items]);
         } else {
@@ -116,12 +128,21 @@ export function ForecastDashboard({
         setPage(data.page);
         setHasMore(data.hasMore);
         loadedForState.current = filterState;
+      } catch {
+        if (request === requestSequence.current) setFetchError(true);
       } finally {
-        setIsLoadingMore(false);
+        if (request === requestSequence.current) setIsLoadingMore(false);
       }
     },
     [includeOrphans]
   );
+
+  useEffect(() => {
+    if (loadOnMount && !initialRequestStarted.current) {
+      initialRequestStarted.current = true;
+      void fetchPage(1, DEFAULT_FILTER_STATE, false);
+    }
+  }, [loadOnMount, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return;
@@ -150,10 +171,10 @@ export function ForecastDashboard({
         setState(next);
         // Server-filter-relevant changes: reset items and fetch fresh page 1
         const serverFiltersChanged =
-          next.query !== loadedForState.current.query ||
-          next.status !== loadedForState.current.status ||
-          next.pageMode !== loadedForState.current.pageMode ||
-          JSON.stringify(next.themes) !== JSON.stringify(loadedForState.current.themes);
+          next.query !== state.query ||
+          next.status !== state.status ||
+          next.pageMode !== state.pageMode ||
+          JSON.stringify(next.themes) !== JSON.stringify(state.themes);
         if (serverFiltersChanged) {
           setItems([]);
           setTotal(0);
@@ -163,19 +184,26 @@ export function ForecastDashboard({
         }
       });
     },
-    [fetchPage]
+    [fetchPage, state]
   );
 
   const reset = useCallback(() => {
     startTransition(() => {
       setState(DEFAULT_FILTER_STATE);
+      if (loadOnMount) {
+        void fetchPage(1, DEFAULT_FILTER_STATE, false);
+        return;
+      }
+      requestSequence.current++;
+      setFetchError(false);
+      setIsLoadingMore(false);
       setItems(initialItems);
       setTotal(initialTotal);
       setPage(1);
       setHasMore(initialItems.length < initialTotal);
       loadedForState.current = DEFAULT_FILTER_STATE;
     });
-  }, [initialItems, initialTotal]);
+  }, [initialItems, initialTotal, loadOnMount, fetchPage]);
 
   const pipeline = useMemo(() => runFilterPipeline(items, state), [items, state]);
 
@@ -191,8 +219,9 @@ export function ForecastDashboard({
   const topBuys = useMemo(
     () =>
       items
-        .filter(({ forecast }) =>
-          forecast.screenerSignal === "Strong Buy" || forecast.screenerSignal === "Buy"
+        .filter(({ product, forecast }) =>
+          product.investmentUniverse === "InvestableSet" &&
+          (forecast.screenerSignal === "Strong Buy" || forecast.screenerSignal === "Buy")
         )
         .sort((a, b) => (b.forecast.investmentScore ?? 0) - (a.forecast.investmentScore ?? 0))
         .slice(0, 5),
@@ -226,8 +255,13 @@ export function ForecastDashboard({
         </p>
       </div>
 
+      {loadOnMount && <p className="mb-4 type-body-sm text-slate-600">
+        Browse the priced catalog across all classifications and retirement statuses.
+        This view does not include unpriced catalog entries.
+      </p>}
+
       {/* Mode tab bar */}
-      <div className="flex gap-0 mb-6 border-b-2 border-jet-black/20">
+      <div className="flex flex-wrap gap-0 mb-6 border-b-2 border-jet-black/20">
         {MODE_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -244,7 +278,14 @@ export function ForecastDashboard({
         ))}
       </div>
 
-      {topBuys.length > 0 && state.pageMode === "Investment Screener" && (
+      {state.pageMode === "All sets" && items.some(({product}) => !product.investmentUniverse) && (
+        <p className="mb-6 type-body-sm text-slate-600" role="note">
+          Some sets have no investment classification yet. They remain available here;
+          an unclassified set is not a buy recommendation.
+        </p>
+      )}
+
+      {!loadOnMount && topBuys.length > 0 && state.pageMode === "Investment Screener" && (
         <div className="mb-10">
           <TopBuyOpportunities items={topBuys} />
         </div>
@@ -288,6 +329,7 @@ export function ForecastDashboard({
             {/* Sort dropdown sits directly below the search bar so it's
                 discoverable without opening the mobile filter drawer. */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="type-caption text-slate-500">Sort loaded results</span>
               <SortMenu
                 value={state.sort}
                 onChange={(sort) => updateState({ ...state, sort })}
@@ -301,23 +343,29 @@ export function ForecastDashboard({
               of{" "}
               <span className="type-mono-num text-jet-black">{total.toLocaleString()}</span>{" "}
               sets
-              {" · "}
+              {!loadOnMount && <>{" · "}
               <a
                 href={
                   includeOrphans
-                    ? "/set-forecast"
-                    : "/set-forecast?all=1"
+                    ? "/catalog"
+                    : "/catalog?all=1"
                 }
                 className="underline text-slate-600 hover:text-jet-black"
               >
                 {includeOrphans
                   ? "Show only sets with pricing data"
                   : "Show all sets including catalog stubs"}
-              </a>
+              </a></>}
             </p>
           </div>
 
-          {isPending && matched === 0 ? (
+          {fetchError ? (
+            <div role="alert" className="rounded-card border-2 border-jet-black/30 p-6">
+              <p>Catalog unavailable. Try again.</p>
+              <button type="button" className="mt-3 underline"
+                onClick={() => void fetchPage(1, state, false)}>Retry catalog</button>
+            </div>
+          ) : isPending && matched === 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <SkeletonForecastCard key={i} />
@@ -326,6 +374,18 @@ export function ForecastDashboard({
           ) : matched === 0 && !isLoadingMore ? (
             <div className="rounded-card border-2 border-dashed border-jet-black/40 bg-pure-white p-10 text-center">
               <p className="type-body text-slate-600">No sets match these filters.</p>
+              {state.pageMode !== "All sets" && (
+                <div className="mt-3">
+                  <p className="type-body-sm text-slate-600">
+                    This view includes only sets with an explicit matching classification.
+                    Other sets may be available in All sets; an empty view does not mean the catalog is empty.
+                  </p>
+                  <button type="button" className="mt-3 underline"
+                    onClick={() => updateState({...DEFAULT_FILTER_STATE, pageMode: "All sets"})}>
+                    Browse all sets
+                  </button>
+                </div>
+              )}
               {!isDefaultState(state) && (
                 <button
                   type="button"
@@ -339,8 +399,8 @@ export function ForecastDashboard({
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                {pipeline.results.map(({ product, forecast }) => (
-                  <ProductForecastCard
+                {pipeline.results.map(({ product, forecast, pricing }) => (
+                  (loadOnMount || state.pageMode === "All sets") ? <CatalogPriceCard key={product.id} product={product} forecast={forecast} pricing={pricing} /> : <ProductForecastCard
                     key={product.id}
                     product={product}
                     forecast={renderForecast(forecast, state.scenario)}

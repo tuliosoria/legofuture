@@ -151,3 +151,10 @@ describe("isDefaultState", () => {
     expect(isDefaultState({ ...DEFAULT_FILTER_STATE, sort: "gain" })).toBe(false);
   });
 });
+
+it('defaults to a neutral all-status catalog rather than investment ranking',()=>{
+ expect(DEFAULT_FILTER_STATE.pageMode).toBe('All sets');
+ expect(DEFAULT_FILTER_STATE.status).toBe('all');
+ expect(DEFAULT_FILTER_STATE.sort).toBe('price-asc');
+ expect(isDefaultState(DEFAULT_FILTER_STATE)).toBe(true);
+});
