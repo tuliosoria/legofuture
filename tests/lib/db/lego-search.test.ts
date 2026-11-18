@@ -42,6 +42,10 @@ describe("loadStoredCatalog", () => {
     expect(polybag?.productType).toBe("Polybag");
     expect(falcon?.productType).toBe("Boxed Set");
   });
+  it("preserves explicit catalog investment classification", async () => {
+    mockSend.mockResolvedValueOnce({Items: [{id: "71043", name: "Hogwarts Castle", pricingProviderCount: 1, pieceCount: 6020, investmentUniverse: "InvestableSet"}]});
+    expect((await loadStoredCatalog())[0]?.investmentUniverse).toBe("InvestableSet");
+  });
   it("exposes soldComps90d from DDB row", async () => {
     mockSend.mockResolvedValueOnce({
       Items: [{ id: "C", name: "Test Set", setNumber: "12345", pricingProviderCount: 1, pieceCount: 200, originalMsrp: 49, soldComps90d: 15 }],
