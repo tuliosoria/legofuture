@@ -19,7 +19,7 @@ export default function CatalogPage() {
         </p>
         <p className="type-body-sm text-slate-600 mt-2">
           Coverage excludes products without a recorded pricing provider and small accessories.
-          Market listings are asking prices, not confirmed sales. Forecasts are estimates.
+          Forecasts are estimates.
         </p>
         <Link href="/set-forecast" className="inline-block mt-4 underline">Back to curated forecasts</Link>
       </header>
