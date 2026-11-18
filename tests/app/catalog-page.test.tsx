@@ -9,5 +9,7 @@ describe("public catalog page", () => {
     expect(screen.getByRole("heading", {name: "Price catalog"})).toBeTruthy();
     expect(screen.getByText("live priced catalog")).toBeTruthy();
     expect(screen.getByText(/not an investment recommendation/i)).toBeTruthy();
+    expect(screen.queryByText(/asking prices/i)).toBeNull();
+    expect(screen.getByText(/Forecasts are estimates/)).toBeTruthy();
   });
 });
