@@ -2,7 +2,7 @@
 
 The `Frontend — validated OIDC deploy` workflow runs on pushes to `main` or manual dispatch of `main`. It first installs locked dependencies and passes Python guard tests plus lint, full tests and production build. Only the separate deploy job requests an AWS session, limited to 900 seconds.
 
-Role: `github-actions-legofuture-frontend-deploy`. Trust is the GitHub `main` subject for `tuliosoria/legofuture`, audience `sts.amazonaws.com`. No environment is set on the job because that would change the OIDC subject. Permissions are only Amplify StartJob/GetJob for this app's main jobs, plus ListJobs/GetBranch on main. It cannot change IAM, read pricing data, read secrets, alter the Amplify service role, or stop jobs. Runtime and price-refresh roles are separate and unchanged.
+Role: `github-actions-legofuture-frontend-deploy`. Trust is the GitHub `main` subject for `tuliosoria/legofuture`, audience `sts.amazonaws.com`. No environment is set on the job because that would change the OIDC subject. Permissions are only Amplify StartJob/GetJob for this app's main jobs, GetBranch on the main branch ARN, and ListJobs on both that branch ARN and its jobs/* ARN. The jobs ARN for ListJobs was required by the real service authorization check; it does not permit another app or branch. It cannot change IAM, read pricing data, read secrets, alter the Amplify service role, or stop jobs. Runtime and price-refresh roles are separate and unchanged.
 
 ## Claude / developer terminal
 
