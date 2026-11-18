@@ -44,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Policy tests
-        run: npx vitest run tests/scripts/ebay-price-policy.test.ts
+        run: npx vitest run tests/scripts/ebay-price-policy.test.ts tests/scripts/ebay-sample-integrity.test.ts tests/domain/observed-history.test.ts
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:

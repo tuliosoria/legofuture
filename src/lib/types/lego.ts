@@ -100,7 +100,7 @@ export interface LegoSet {
   soldComps90d?: number;
 }
 
-/** Pricing snapshot sourced from PriceCharting */
+/** Merged pricing snapshot; provenance is condition-specific. */
 export interface ProductPricing {
   /** Factory-sealed / "new" price */
   newPrice: number | null;
@@ -109,7 +109,10 @@ export interface ProductPricing {
   /** Loose / opened price */
   loosePrice: number | null;
   salesVolume: number | null;
-  lastFetched: string;
+  /** Observation date of the preferred price, not the latest check. */
+  lastFetched: string | null;
+  observations?: Record<"newSealed" | "complete" | "loose", { source: string; observedAt: string | null } | null>;
+  ebayCheck?: { checkedAt: string | null; status: string | null };
 }
 
 export interface ScenarioOutlook {

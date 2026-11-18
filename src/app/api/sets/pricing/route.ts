@@ -37,12 +37,14 @@ export async function GET(request: NextRequest) {
     complete: pricing?.cibPrice ?? null,
     loose: pricing?.loosePrice ?? null,
     updatedAt,
+    observations: pricing?.observations ?? null,
+    ebayCheck: pricing?.ebayCheck ?? null,
   };
 
   return NextResponse.json(body, {
     headers: {
       "Cache-Control": "public, max-age=300",
-      "X-Data-Freshness": updatedAt ?? new Date().toISOString(),
+      ...(updatedAt ? { "X-Data-Freshness": updatedAt } : {}),
     },
   });
 }

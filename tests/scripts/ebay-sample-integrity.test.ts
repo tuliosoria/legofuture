@@ -42,3 +42,31 @@ describe("price observation provenance", () => {
     expect(policy.buildPriceRow({...result, status: "accepted", activeCount: 8}, {price: 100, capturedAt: "2026-11-01T07:00:00Z"}, now)).toMatchObject({price: 100, capturedAt: now, source: "ebay"});
   });
 });
+
+describe('November audit regressions', () => {
+  it.each(['LEGO 75192 + 10307 sealed', 'LEGO 75192 and 10307 New Sealed', 'LEGO 75192 missing bag', 'LEGO 75192 choose your set', 'LEGO 75192 without figures'])( 'rejects ambiguous or incomplete title %s', title => {
+    expect(policy.isSetListing(title, '75192')).toBe(false);
+  });
+  it('keeps pieces and year descriptions valid', () => {
+    expect(policy.isSetListing('LEGO 75192 Millennium Falcon 7541 pieces 2017 sealed', '75192')).toBe(true);
+  });
+  it('includes unpriced catalog sets under the same rotation cap', () => {
+    const work = policy.buildWorkList({curated: [], catalog: [{id:'new', setNumber:'21399'}], pcNewPriceCents:new Map(), ebayRows:new Map(),rotationLimit:1});
+    expect(work).toEqual([{setNumber:'21399',lastKnown:null,curated:false}]);
+  });
+  it('requires 16 valid observations for an initial price', () => {
+    expect(policy.decideEbayPrice({lastKnown:null,aggregate:{activeCount:16,p50:99}})).toEqual({status:'accepted',price:99});
+    expect(policy.decideEbayPrice({lastKnown:null,aggregate:{activeCount:15,p50:99}}).status).toBe('thin');
+  });
+  it('creates history only for accepted dated observations, not retained prices', () => {
+    const result={setNumber:'75192',status:'accepted',price:99,activeCount:16};
+    expect(policy.buildHistoryRow(result,'2026-11-18T07:00:00Z')).toMatchObject({pk:'PRICING#PRODUCT#75192',sk:'ebay-history#2026-11-18',price:99,source:'ebay',capturedAt:'2026-11-18T07:00:00Z'});
+    expect(policy.buildHistoryRow({...result,status:'thin'},'2026-11-18T07:00:00Z')).toBeNull();
+  });
+});
+
+it('distinguishes piece counts and negation from bundles and missing bags',()=>{
+ expect(policy.isSetListing('LEGO 75192 with 7541 pieces sealed','75192')).toBe(true);
+ expect(policy.isSetListing('LEGO 75192 new sealed no missing pieces','75192')).toBe(true);
+ expect(policy.isSetListing('LEGO 75192 missing 3 bags','75192')).toBe(false);
+});

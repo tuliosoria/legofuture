@@ -3,6 +3,7 @@ import "server-only";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type { HistoryPoint, LegoCondition, LegoSet } from "@/lib/types/lego";
 import { getDynamo, getTableName } from "./dynamo";
+import { mergeObservedHistory } from "@/lib/domain/observed-history";
 import { cacheGet, cachePut } from "./cache";
 
 /**
@@ -69,8 +70,27 @@ export async function loadHistory(
       .filter((h) => h.date && Number.isFinite(h.price))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    await cachePut(HISTORY_CACHE_TYPE, key, history, HISTORY_TTL_SEC);
-    return history;
+    const observed: Record<string, unknown>[] = [];
+    if (condition === "new-sealed" && product.setNumber) {
+      try {
+      let cursor: Record<string, unknown> | undefined;
+      do {
+        const response = await client.send(new QueryCommand({
+          TableName: table,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+          ExpressionAttributeValues: { ":pk": `PRICING#PRODUCT#${product.setNumber}`, ":prefix": "ebay-history#" },
+          ExclusiveStartKey: cursor,
+        }));
+        observed.push(...(response.Items ?? []));
+        cursor = response.LastEvaluatedKey;
+      } while (cursor);
+      } catch (err) {
+        console.warn("loadHistory supplemental eBay history unavailable:", err);
+      }
+    }
+    const merged = mergeObservedHistory(history, observed);
+    await cachePut(HISTORY_CACHE_TYPE, key, merged, HISTORY_TTL_SEC);
+    return merged;
   } catch (err) {
     console.warn("loadHistory error:", err);
     return [];

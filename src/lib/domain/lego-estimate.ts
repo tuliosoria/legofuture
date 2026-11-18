@@ -25,7 +25,7 @@ import { cacheGet, cachePut } from "@/lib/db/cache";
  * (other sources keyed by LEGO set number). Cached for 5 minutes per product.
  */
 
-const PRICING_CACHE_TYPE = "lego-pricing-merged-v3";
+const PRICING_CACHE_TYPE = "lego-pricing-merged-v4";
 const PRICING_TTL_SEC = 300;
 
 interface MergedPricingResult {
@@ -55,6 +55,12 @@ export function mergePricingRows(
   let loosePrice: number | null = null;
   let salesVolume: number | null = null;
   const sources = new Set<string>();
+  const observations: NonNullable<ProductPricing["observations"]> = {newSealed: null, complete: null, loose: null};
+  const timestamp = (value: unknown): string | null =>
+    typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : null;
+  const observation = (source: string, row: Record<string, unknown>) => ({
+    source, observedAt: timestamp(source === "pricecharting" ? row.updatedAt : row.capturedAt),
+  });
 
   // eBay median (sk='ebay-median') — the current price, already vetted by the
   // refresh policy (>= 8 listings, within 0.5x–2x of the last known price).
@@ -62,6 +68,7 @@ export function mergePricingRows(
   const ebayMedian = ebayMedianRow ? num(ebayMedianRow.price) : null;
   if (ebayMedian !== null && ebayMedian > 0) {
     newPrice = ebayMedian;
+    observations.newSealed = observation("ebay-median", ebayMedianRow!);
     sources.add("ebay-median");
   }
 
@@ -71,9 +78,9 @@ export function mergePricingRows(
     const np = num(pcRow["new-price"]);
     const cp = num(pcRow["cib-price"]);
     const lp = num(pcRow["loose-price"]);
-    if (np !== null && newPrice === null) { newPrice = np / 100; sources.add("pricecharting"); }
-    if (cp !== null) { cibPrice = cp / 100; sources.add("pricecharting"); }
-    if (lp !== null) { loosePrice = lp / 100; sources.add("pricecharting"); }
+    if (np !== null && newPrice === null) { newPrice = np / 100; observations.newSealed = observation("pricecharting", pcRow); sources.add("pricecharting"); }
+    if (cp !== null) { cibPrice = cp / 100; observations.complete = observation("pricecharting", pcRow); sources.add("pricecharting"); }
+    if (lp !== null) { loosePrice = lp / 100; observations.loose = observation("pricecharting", pcRow); sources.add("pricecharting"); }
   }
 
   // BrickLink (sk='bricklink')
@@ -82,12 +89,12 @@ export function mergePricingRows(
     const na = num(blRow.newAvg);
     const ua = num(blRow.usedAvg);
     if (na !== null) {
-      if (newPrice === null) newPrice = na;
+      if (newPrice === null) { newPrice = na; observations.newSealed = observation("bricklink-new", blRow); }
       sources.add("bricklink-new");
     }
     if (ua !== null) {
-      if (cibPrice === null) cibPrice = ua;
-      if (loosePrice === null) loosePrice = ua;
+      if (cibPrice === null) { cibPrice = ua; observations.complete = observation("bricklink-used", blRow); }
+      if (loosePrice === null) { loosePrice = ua; observations.loose = observation("bricklink-used", blRow); }
       sources.add("bricklink-used");
     }
   }
@@ -98,11 +105,11 @@ export function mergePricingRows(
     const cvn = num(bsRow.currentValueNew);
     const cvu = num(bsRow.currentValueUsed);
     if (cvn !== null) {
-      if (newPrice === null) newPrice = cvn;
+      if (newPrice === null) { newPrice = cvn; observations.newSealed = observation("brickset", bsRow); }
       sources.add("brickset");
     }
     if (cvu !== null) {
-      if (cibPrice === null) cibPrice = cvu;
+      if (cibPrice === null) { cibPrice = cvu; observations.complete = observation("brickset", bsRow); }
       sources.add("brickset");
     }
   }
@@ -113,7 +120,7 @@ export function mergePricingRows(
     const avg = num(ebRow.avgSoldPrice);
     const vol = num(ebRow.soldCount);
     if (avg !== null) {
-      if (newPrice === null) newPrice = avg;
+      if (newPrice === null) { newPrice = avg; observations.newSealed = observation("ebay-sold", ebRow); }
       sources.add("ebay-sold");
     }
     if (vol !== null && salesVolume === null) salesVolume = vol;
@@ -123,18 +130,17 @@ export function mergePricingRows(
     return { pricing: null, providerCount: 0 };
   }
 
-  const lastFetched =
-    (ebayMedian !== null && ebayMedian > 0
-      ? (ebayMedianRow?.capturedAt as string | undefined)
-      : undefined) ??
-    (pcRow?.updatedAt as string | undefined) ??
-    (blRow?.capturedAt as string | undefined) ??
-    (bsRow?.capturedAt as string | undefined) ??
-    (ebRow?.capturedAt as string | undefined) ??
-    new Date().toISOString();
+  // Do not borrow a date from a losing provider or invent freshness. A new
+  // eBay observation must not make retained used/loose prices appear current.
+  const preferred = observations.newSealed ?? observations.complete ?? observations.loose;
+  const lastFetched = preferred?.observedAt ?? null;
+  const ebayCheck = ebayMedianRow ? {
+    checkedAt: timestamp(ebayMedianRow.checkedAt),
+    status: typeof ebayMedianRow.status === "string" ? ebayMedianRow.status : null,
+  } : undefined;
 
   return {
-    pricing: { newPrice, cibPrice, loosePrice, salesVolume, lastFetched },
+    pricing: { newPrice, cibPrice, loosePrice, salesVolume, lastFetched, observations, ...(ebayCheck ? {ebayCheck} : {}) },
     providerCount: sources.size,
   };
 }

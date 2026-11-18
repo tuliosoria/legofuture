@@ -20,7 +20,7 @@ describe("mergePricingRows", () => {
         updatedAt: "2026-05-01T00:00:00Z",
       },
     ]);
-    expect(result.pricing).toEqual({
+    expect(result.pricing).toMatchObject({
       newPrice: 123.45,
       cibPrice: 90,
       loosePrice: 45,
@@ -114,5 +114,31 @@ describe("mergePricingRows", () => {
     ]);
     expect(result.pricing?.newPrice).toBe(120);
     expect(result.pricing?.lastFetched).toBe("2026-05-18T00:00:00Z");
+  });
+});
+
+describe("pricing freshness", () => {
+  it("keeps unknown observation dates null instead of inventing now", () => {
+    expect(mergePricingRows([{sk: "v1", "new-price": 10000}]).pricing?.lastFetched).toBeNull();
+    expect(mergePricingRows([{sk: "v1", "new-price": 10000, updatedAt: "not-a-date"}]).pricing?.lastFetched).toBeNull();
+  });
+  it("does not borrow a fallback provider's timestamp for the winning price", () => {
+    expect(mergePricingRows([
+      {sk: "ebay-median", price: 120},
+      {sk: "v1", "new-price": 10000, updatedAt: "2026-05-01T00:00:00Z"},
+    ]).pricing?.lastFetched).toBeNull();
+  });
+  it("exposes each condition's actual provenance, keeping check and observation separate", () => {
+    const pricing = mergePricingRows([
+      {sk: "ebay-median", price: 120, capturedAt: "2026-11-10T00:00:00Z", checkedAt: "2026-11-18T00:00:00Z", status: "thin"},
+      {sk: "v1", "cib-price": 8000, "loose-price": 6000, updatedAt: "2026-05-01T00:00:00Z"},
+    ]).pricing;
+    expect(pricing?.observations).toEqual({
+      newSealed: {source: "ebay-median", observedAt: "2026-11-10T00:00:00Z"},
+      complete: {source: "pricecharting", observedAt: "2026-05-01T00:00:00Z"},
+      loose: {source: "pricecharting", observedAt: "2026-05-01T00:00:00Z"},
+    });
+    expect(pricing?.ebayCheck).toEqual({checkedAt: "2026-11-18T00:00:00Z", status: "thin"});
+    expect(pricing?.lastFetched).toBe("2026-11-10T00:00:00Z");
   });
 });

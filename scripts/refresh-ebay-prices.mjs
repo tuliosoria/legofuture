@@ -32,6 +32,7 @@ import {
   formatSummary,
   summarizeListings,
   buildPriceRow,
+  buildHistoryRow,
 } from "./lib/ebay-price-policy.mjs";
 
 const args = process.argv.slice(2);
@@ -186,7 +187,9 @@ async function main() {
   if (DRY_RUN) return;
 
   const rows = results.map((r) => buildPriceRow(r, ebayRows.get(r.setNumber), now));
-  await writeRows(rows);
+  const history = results.map(r => buildHistoryRow(r, now)).filter(Boolean);
+  await writeRows([...rows, ...history]);
+  console.log(`[ebay-prices] saved ${history.length} real dated observations`);
   console.log(`[ebay-prices] wrote ${rows.length} rows to ${TABLE}`);
 }
 
