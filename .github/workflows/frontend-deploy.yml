@@ -1,0 +1,56 @@
+name: Frontend — validated OIDC deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legofuture-amplify-main
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'tuliosoria/legofuture' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: python3 -m unittest discover -s tests/ci -v
+      - run: npm run verify
+
+  deploy:
+    needs: verify
+    if: github.repository == 'tuliosoria/legofuture' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Temporary frontend-only AWS session
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: arn:aws:iam::825081952316:role/github-actions-legofuture-frontend-deploy
+          role-session-name: bricks-frontend-${{ github.run_id }}
+          role-duration-seconds: 900
+          aws-region: us-east-1
+          allowed-account-ids: '825081952316'
+          unset-current-credentials: true
+      - name: Release once and verify live commit
+        env:
+          AWS_MAX_ATTEMPTS: '1'
+        run: python3 scripts/ci/deploy_frontend.py
