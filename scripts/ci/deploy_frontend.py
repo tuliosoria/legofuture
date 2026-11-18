@@ -24,14 +24,20 @@ def aws(operation, **params):
     for key, value in params.items():
         command.extend(['--'+key.replace('_', '-'), str(value)])
     if operation == 'list-jobs':
-        command.extend(['--max-results', '50', '--no-paginate'])
+        command.extend(['--page-size', '50', '--max-items', '50'])
     # StartJob has no idempotency key: a timeout must never cause an automatic retry.
     env = {**os.environ, 'AWS_MAX_ATTEMPTS': '1', 'AWS_RETRY_MODE': 'standard'}
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=30, env=env, check=True)
         return json.loads(result.stdout)
     except (subprocess.SubprocessError, ValueError) as exc:
-        raise RuntimeError(f'{operation} failed or outcome uncertain; inspect Amplify jobs before retrying') from exc
+        code = 'local-error'
+        if isinstance(exc, subprocess.CalledProcessError):
+            match = re.search(r'An error occurred \(([A-Za-z0-9_.-]{1,80})\)', exc.stderr or '')
+            code = match.group(1) if match else f'cli-exit-{exc.returncode}'
+        elif isinstance(exc, subprocess.TimeoutExpired):
+            code = 'timeout'
+        raise RuntimeError(f'{operation} failed ({code}) or outcome uncertain; inspect Amplify jobs before retrying') from exc
 
 
 def remote_head():

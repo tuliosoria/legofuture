@@ -59,3 +59,23 @@ class DeployTests(unittest.TestCase):
    m.deploy(SHA,aws,lambda:SHA,lambda:SHA,lambda _:None,lambda:next(ticks))
   self.assertEqual(calls.count('start-job'),1)
 if __name__=='__main__':unittest.main()
+
+class CliTests(unittest.TestCase):
+ def test_list_jobs_uses_supported_bounded_pagination(self):
+  from unittest.mock import patch
+  import subprocess
+  with patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'[]','')) as run:
+   self.assertEqual(m.aws('list-jobs'),[])
+  command=run.call_args.args[0]
+  self.assertNotIn('--max-results',command)
+  self.assertNotIn('--no-paginate',command)
+  self.assertEqual(command[command.index('--page-size')+1],'50')
+  self.assertEqual(command[command.index('--max-items')+1],'50')
+ def test_error_exposes_only_safe_code(self):
+  from unittest.mock import patch
+  import subprocess
+  error=subprocess.CalledProcessError(254,[],stderr='An error occurred (AccessDeniedException) when calling ListJobs: secret https://signed.invalid/token')
+  with patch.object(m.subprocess,'run',side_effect=error):
+   with self.assertRaisesRegex(RuntimeError,'AccessDeniedException') as raised:m.aws('list-jobs')
+  self.assertNotIn('signed.invalid',str(raised.exception))
+  self.assertNotIn('secret',str(raised.exception))
