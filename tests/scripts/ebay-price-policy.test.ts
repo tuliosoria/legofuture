@@ -133,7 +133,7 @@ describe("buildWorkList", () => {
     ]);
   });
 
-  it("skips catalog rows without a set number or a positive last known price", () => {
+  it("skips missing set identities but includes unpriced identities for bootstrap", () => {
     const items = buildWorkList({
       curated: [],
       catalog: [{ id: "x", setNumber: "1" }, { id: "pc5", setNumber: null }],
@@ -141,7 +141,7 @@ describe("buildWorkList", () => {
       ebayRows: new Map(),
       rotationLimit: 10,
     });
-    expect(items).toEqual([]);
+    expect(items).toEqual([{setNumber:"1",lastKnown:null,curated:false}]);
   });
 });
 
@@ -164,10 +164,10 @@ describe("formatSummary", () => {
       ],
       { dryRun: false }
     );
-    expect(md).toContain("### Curated sets that kept their last price");
+    expect(md).toContain("### Price review queue (all discrepancies and unrefreshed curated sets)");
     expect(md).toContain("| 10220 | out-of-band | $173.00 | $520.00 | 40 |");
     expect(md).toContain("| 21044 | thin | $49.00 | $110.00 | 3 |");
-    expect(md).not.toContain("| 6000 |");
+    expect(md).toContain("| 6000 | out-of-band |");
     expect(md).toContain("| 10270 ★ | $380.00 | $400.00 | 5.3% | 30 |");
   });
 });

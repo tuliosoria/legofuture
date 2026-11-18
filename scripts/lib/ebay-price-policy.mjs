@@ -12,18 +12,23 @@ export const MIN_RATIO = 0.5;
 export const MAX_RATIO = 2;
 
 /**
- * @param {{ lastKnown: number, aggregate: { activeCount: number, p50: number | null } | null }} input
- * @returns {{ status: "accepted" | "thin" | "out-of-band" | "no-data", price: number }}
+ * @param {{ lastKnown: number | null, aggregate: { activeCount: number, p50: number | null } | null }} input
+ * @returns {{ status: "accepted" | "thin" | "out-of-band" | "no-data", price: number | null }}
  */
 export function decideEbayPrice({ lastKnown, aggregate }) {
   const p50 = aggregate?.p50;
-  if (!Number.isFinite(lastKnown) || lastKnown <= 0) {
-    return { status: "no-data", price: lastKnown };
-  }
   if (!aggregate || typeof p50 !== "number" || !Number.isFinite(p50) || p50 <= 0) {
     return { status: "no-data", price: lastKnown };
   }
   if (!Number.isSafeInteger(aggregate.activeCount) || aggregate.activeCount < MIN_EBAY_LISTINGS) return { status: "thin", price: lastKnown };
+  // First observations cannot be compared with a nonexistent legacy price.
+  // Require twice the normal sample before bootstrapping a catalog item.
+  if (lastKnown == null) {
+    return aggregate.activeCount >= 16
+      ? { status: "accepted", price: Math.round(p50 * 100) / 100 }
+      : { status: "thin", price: lastKnown };
+  }
+  if (!Number.isFinite(lastKnown) || lastKnown <= 0) return { status: "no-data", price: lastKnown };
   const ratio = p50 / lastKnown;
   if (ratio < MIN_RATIO || ratio > MAX_RATIO) return { status: "out-of-band", price: lastKnown };
   return { status: "accepted", price: Math.round(p50 * 100) / 100 };
@@ -34,6 +39,8 @@ export function decideEbayPrice({ lastKnown, aggregate }) {
 // mentions its contents through ("Sealed, 25 Minifigures", "No Box Damage").
 const NOT_A_SET = [
   { pattern: /\bbundle\b/i },
+  { pattern: /\b(?:missing|without)\s+(?:(?:some|any|the|all|a|\d+)\s+)?(?:bags?|pieces?|parts?|figures?|minifigures?|bricks?)\b/i },
+  { pattern: /\b(?:choose|pick|select)\s+(?:(?:your|a|the)\s+)?(?:set|model|option|variant)\b/i },
   { pattern: /\b(?:x\s*[2-9]\d*|[2-9]\d*\s*x)\b/i },
   { pattern: /\b(?:pack|set) of [2-9]\d*\b/i },
   { pattern: /\b(?:bags?|bricks?) only\b/i },
@@ -71,8 +78,14 @@ export function isSetListing(title, setNumber) {
   const number = String(setNumber).split("-")[0];
   const exact = new RegExp(`(^|[^a-z0-9])${number}([^a-z0-9]|$)`, "i");
   if (!exact.test(title)) return false;
+  // Linked set IDs indicate a multi-set offer, not a single sealed set.
+  const linked = /\b(\d{3,7})(?:-\d{1,2})?\s*(?:\+|&|and|with|\/)\s*(?:LEGO\s*)?(\d{3,7})(?:-\d{1,2})?\b/gi;
+  for (const match of title.matchAll(linked)) {
+    if (/^\s*(?:pieces?|pcs|bricks?)\b/i.test(title.slice(match.index + match[0].length))) continue;
+    if ((match[1] === number || match[2] === number) && match[1] !== match[2]) return false;
+  }
   // Negative condition phrases describe an unused/unopened set, not a defect.
-  const description = title.replace(/\b(?:never|not)(?:\s+been)?\s+(?:opened|used)\b/gi, "");
+  const description = title.replace(/\bno\s+missing\s+(?:(?:pieces?|parts?|bags?|bricks?)\b)/gi, "").replace(/\b(?:never|not)(?:\s+been)?\s+(?:opened|used)\b/gi, "");
   return !NOT_A_SET.some(({ pattern, unless }) => pattern.test(description) && !(unless && unless.test(description)));
 }
 
@@ -144,7 +157,7 @@ export function buildPriceRow(result, previousRow, checkedAt) {
 
 /**
  * Daily work list: every curated set, then a rotating slice of the rest of
- * the priced catalog (never-checked first, then oldest check first).
+ * the catalog (never-checked first, then oldest check first).
  *
  * lastKnown = previous eBay price ?? PriceCharting new price (May 2026
  * snapshot, cents) ?? curated price.
@@ -174,14 +187,14 @@ export function buildWorkList({ curated, catalog, pcNewPriceCents, ebayRows, rot
   }
 
   const rest = [];
-  for (const setNumber of pcBySet.keys()) {
+  for (const setNumber of new Set(catalog.map(row => row.setNumber == null ? null : String(row.setNumber)).filter(value => value && /^\d{1,7}(?:-\d{1,2})?$/.test(value)))) {
     if (seen.has(setNumber)) continue;
     seen.add(setNumber);
     rest.push({ setNumber, lastKnown: lastKnownFor(setNumber, null), curated: false });
   }
   const checkedAt = (setNumber) => ebayRows.get(setNumber)?.checkedAt ?? "";
   rest.sort((a, b) => checkedAt(a.setNumber).localeCompare(checkedAt(b.setNumber)) || a.setNumber.localeCompare(b.setNumber));
-  return items.concat(rest.filter((item) => item.lastKnown > 0).slice(0, Math.max(0, rotationLimit)));
+  return items.concat(rest.slice(0, Math.max(0, rotationLimit)));
 }
 
 /** A run that accepted nothing is a broken collection, not a quiet market. */
@@ -218,19 +231,30 @@ export function formatSummary(results, { dryRun }) {
         `| ${r.setNumber}${r.curated ? " ★" : ""} | $${r.lastKnown.toFixed(2)} | $${r.price.toFixed(2)} | ${(r.change * 100).toFixed(1)}% | ${r.activeCount} |`
     ),
   ];
-  const stuck = results.filter((r) => r.curated && r.status !== "accepted");
+  const stuck = results.filter((r) => r.status === "out-of-band" || (r.curated && r.status !== "accepted"));
   if (stuck.length) {
     lines.push(
       "",
-      "### Curated sets that kept their last price",
+      "### Price review queue (all discrepancies and unrefreshed curated sets)",
       "",
       "| set | status | kept | eBay median | listings |",
       "|---|---|---|---|---|",
       ...stuck.map(
         (r) =>
-          `| ${r.setNumber} | ${r.status} | $${r.lastKnown.toFixed(2)} | ${typeof r.p50 === "number" ? `$${r.p50.toFixed(2)}` : "—"} | ${r.activeCount} |`
+          `| ${r.setNumber} | ${r.status} | $${Number.isFinite(r.lastKnown) ? r.lastKnown.toFixed(2) : "—"} | ${typeof r.p50 === "number" ? `$${r.p50.toFixed(2)}` : "—"} | ${r.activeCount} |`
       )
     );
   }
   return lines.join("\n") + "\n";
+}
+
+/** Actual accepted daily samples, isolated from legacy/synthetic history. */
+export function buildHistoryRow(result, capturedAt) {
+  if (result.status !== "accepted" || !Number.isFinite(result.price) || result.price <= 0 ||
+      !Number.isFinite(Date.parse(capturedAt))) return null;
+  return {
+    pk: `PRICING#PRODUCT#${result.setNumber}`,
+    sk: `ebay-history#${capturedAt.slice(0, 10)}`,
+    price: result.price, source: "ebay", capturedAt, activeCount: result.activeCount,
+  };
 }
