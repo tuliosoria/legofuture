@@ -160,6 +160,7 @@ function normalizeStoredRow(item: Record<string, unknown>): LegoSet | null {
     originalMsrp: (item.originalMsrp as number | undefined) ?? 0,
     imageUrl: (item.imageUrl as string | undefined) ?? "",
     slug: (item.slug as string | undefined) ?? deriveSlug(name, id),
+    investmentUniverse: item.investmentUniverse as LegoSet["investmentUniverse"],
     enrichmentStatus: item.enrichmentStatus as LegoSet["enrichmentStatus"],
     pricingProviderCount: (item.pricingProviderCount as number | undefined) ?? 0,
     soldComps90d: typeof item.soldComps90d === "number" ? (item.soldComps90d as number) : undefined,
