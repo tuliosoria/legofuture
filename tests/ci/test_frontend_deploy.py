@@ -79,3 +79,13 @@ class CliTests(unittest.TestCase):
    with self.assertRaisesRegex(RuntimeError,'AccessDeniedException') as raised:m.aws('list-jobs')
   self.assertNotIn('signed.invalid',str(raised.exception))
   self.assertNotIn('secret',str(raised.exception))
+
+class CreatedJobTests(unittest.TestCase):
+ run_deploy = DeployTests.run_deploy
+ def test_created_same_commit_resumes(self):
+  run,calls=self.run_deploy(jobs=[{'jobId':'42','commitId':SHA,'status':'CREATED'}])
+  self.assertEqual(run(),'42');self.assertNotIn('start-job',calls)
+ def test_created_other_commit_blocks(self):
+  run,calls=self.run_deploy(jobs=[{'jobId':'42','commitId':'b'*40,'status':'CREATED'}])
+  with self.assertRaisesRegex(RuntimeError,'another'):run()
+  self.assertNotIn('start-job',calls)

@@ -12,7 +12,7 @@ APP = 'd2lnw5t0h096c1'
 BRANCH = 'main'
 REGION = 'us-east-1'
 LIVE = 'https://bricksfuture.com/deployment.json'
-ACTIVE = {'PENDING', 'PROVISIONING', 'RUNNING', 'CANCELLING'}
+ACTIVE = {'CREATED', 'PENDING', 'PROVISIONING', 'RUNNING', 'CANCELLING'}
 QUERIES = {'get-branch': 'branch.{enableAutoBuild:enableAutoBuild}',
            'list-jobs': 'jobSummaries', 'start-job': 'jobSummary', 'get-job': 'job.summary'}
 
