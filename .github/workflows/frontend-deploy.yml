@@ -48,7 +48,6 @@ jobs:
           role-session-name: bricks-frontend-${{ github.run_id }}
           role-duration-seconds: 900
           aws-region: us-east-1
-          allowed-account-ids: '825081952316'
           unset-current-credentials: true
       - name: Release once and verify live commit
         env:
