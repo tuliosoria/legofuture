@@ -1,10 +1,10 @@
-import type { LegoSet, LegoTheme, Forecast, Scenario, LiquidityTier, ScreenerSignal } from "@/lib/types/lego";
+import type { ProductPricing, LegoSet, LegoTheme, Forecast, Scenario, LiquidityTier, ScreenerSignal } from "@/lib/types/lego";
 import { buildLegoDisplayName, buildLegoSearchAliases } from "./lego-catalog-search";
 
 export type StatusFilter = "all" | "active" | "retiring" | "retired";
 export type RecommendationFilter = "all" | "buy" | "hold" | "sell";
 export type ScreenerSignalFilter = "all" | "Strong Buy" | "Buy" | "Watch" | "Avoid";
-export type PageMode = "Investment Screener" | "Retired Set Tracker" | "Collector Catalog";
+export type PageMode = "All sets" | "Investment Screener" | "Retired Set Tracker" | "Collector Catalog";
 export type SortKey =
   | "gain"
   | "upside"
@@ -19,6 +19,7 @@ export type SortKey =
 export interface CatalogItem {
   product: LegoSet;
   forecast: Forecast;
+  pricing?: ProductPricing | null;
 }
 
 export interface FilterState {
@@ -37,11 +38,11 @@ export interface FilterState {
 export const DEFAULT_FILTER_STATE: FilterState = {
   query: "",
   themes: [],
-  status: "active",
+  status: "all",
   recommendation: "all",
   scenario: "moderate",
-  sort: "investmentScore",
-  pageMode: "Investment Screener",
+  sort: "price-asc",
+  pageMode: "All sets",
   screenerSignalFilter: "all",
   liquidityTier: "all",
   minNetGain: 0,
@@ -194,11 +195,11 @@ export function isDefaultState(state: FilterState): boolean {
   return (
     state.query === "" &&
     state.themes.length === 0 &&
-    state.status === "active" &&
+    state.status === "all" &&
     state.recommendation === "all" &&
     state.scenario === "moderate" &&
-    state.sort === "investmentScore" &&
-    state.pageMode === "Investment Screener" &&
+    state.sort === "price-asc" &&
+    state.pageMode === "All sets" &&
     state.screenerSignalFilter === "all" &&
     state.liquidityTier === "all" &&
     state.minNetGain === 0

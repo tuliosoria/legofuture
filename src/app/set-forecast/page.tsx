@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { loadLiveCuratedCatalog } from "@/lib/data/live-catalog";
 import { ForecastFilters } from "@/components/sets/ForecastFilters";
@@ -28,6 +29,10 @@ export default async function SetForecastPage() {
         </p>
       </div>
 
+      <p className="type-body-sm text-slate-700 mb-6">
+        Looking beyond this curated selection? <Link href="/catalog" className="underline">Browse the price catalog</Link>,
+        including sets without an investment classification.
+      </p>
       <ForecastFilters sets={allSets} />
 
       <p className="type-caption text-slate-500 mt-10 leading-relaxed">

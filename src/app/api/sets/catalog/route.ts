@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     pageItems.map(async (product) => {
       const pricing = await getPricing(product);
       const forecast = computeForecast(product, pricing ?? DEFAULT_PRICING, baseline);
-      return { product, forecast };
+      return { product, forecast, pricing };
     })
   );
 

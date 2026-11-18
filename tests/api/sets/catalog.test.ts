@@ -69,6 +69,13 @@ describe("GET /api/sets/catalog", () => {
     mockComputeForecast.mockReturnValue(defaultForecast);
   });
 
+  it("returns actual pricing provenance without substituting computed forecast prices", async () => {
+    const pricing = {newPrice:499,cibPrice:null,loosePrice:null,salesVolume:null,lastFetched:"2026-11-18T07:00:00Z",observations:{newSealed:{source:"ebay-median",observedAt:"2026-11-18T07:00:00Z"},complete:null,loose:null}};
+    mockLoadStoredCatalog.mockResolvedValue([makeSet("1")]);
+    mockGetPricing.mockResolvedValue(pricing);
+    const body = await (await GET(makeRequest({mode:"all"}))).json();
+    expect(body.items[0].pricing).toEqual(pricing);
+  });
   it("returns page 1 slice with correct shape", async () => {
     const sets = Array.from({ length: 10 }, (_, i) => makeSet(String(i + 1)));
     mockLoadStoredCatalog.mockResolvedValue(sets);
