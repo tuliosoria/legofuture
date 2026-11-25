@@ -31,8 +31,7 @@ export default async function HomePage() {
               The screener for sealed-LEGO investors.
             </h1>
             <p className="type-body-lg text-slate-700 mt-5 max-w-xl">
-              5-year return forecasts on {allSets.length} investment-grade LEGO sets, with an
-              S&amp;P 500 benchmark and an early read on retirement supply shocks.
+              {`5-year return forecasts on ${allSets.length} investment-grade LEGO sets, with an S&P 500 benchmark and an early read on retirement supply shocks.`}
             </p>
             <div className="flex flex-wrap gap-3 mt-7">
               <Link href="/buying-list/retired">
